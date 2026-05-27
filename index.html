@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glen UTM Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:        #08090C;
+  --surface:   #0E1016;
+  --surface2:  #13151D;
+  --border:    #1C1F2E;
+  --border2:   #252840;
+  --blue:      #4F8EF7;
+  --blue-dim:  rgba(79,142,247,0.12);
+  --green:     #10B981;
+  --amber:     #F5A623;
+  --red:       #EF4444;
+  --red-dim:   rgba(239,68,68,0.08);
+  --text:      #E8EAEF;
+  --text-dim:  #6B7280;
+  --text-muted:#3D4152;
+  --mono:      'IBM Plex Mono', monospace;
+  --sans:      'IBM Plex Sans', sans-serif;
+  --radius:    8px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+#app { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+
+/* ── Header ── */
+header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+.site-title    { font-family: var(--mono); font-size: 18px; font-weight: 600; }
+.site-subtitle { font-size: 13px; color: var(--text-dim); }
+.magic-badge   {
+  margin-left: auto; font-family: var(--mono); font-size: 11px; font-weight: 600;
+  background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue);
+  padding: 3px 12px; border-radius: 20px; letter-spacing: 0.06em;
+}
+
+/* ── Date bar ── */
+#date-bar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-bottom: 16px;
+}
+.chip {
+  font-family: var(--mono); font-size: 12px; padding: 6px 14px; border-radius: 20px;
+  border: 1px solid var(--border2); background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.chip:hover  { border-color: var(--blue); color: var(--text); }
+.chip.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+#custom-picker { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
+#custom-picker.visible { display: flex; }
+#custom-picker input[type="date"] {
+  font-family: var(--mono); font-size: 12px; padding: 6px 10px;
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text);
+  border-radius: 6px; color-scheme: dark;
+}
+#apply-btn {
+  font-family: var(--mono); font-size: 12px; padding: 6px 14px;
+  background: var(--blue); color: #fff; border: none; border-radius: 6px; cursor: pointer;
+}
+#apply-btn:hover { opacity: 0.85; }
+
+/* ── Status bar ── */
+#status-bar { margin-bottom: 16px; }
+.status-msg {
+  font-family: var(--mono); font-size: 12px; padding: 10px 16px; border-radius: 6px;
+  display: flex; align-items: center; gap: 10px;
+}
+.status-msg.error   { background: var(--red-dim);                 color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
+.status-msg.warning { background: rgba(245,166,35,0.08);          color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+.status-msg.cached  { background: var(--surface);                 color: var(--text-dim); border: 1px solid var(--border); }
+.status-msg.loading { background: var(--surface);                 color: var(--text-dim); border: 1px solid var(--border); }
+.retry-btn {
+  font-family: var(--mono); font-size: 11px; padding: 3px 10px;
+  border: 1px solid var(--red); color: var(--red); background: transparent;
+  border-radius: 4px; cursor: pointer; margin-left: auto;
+}
+.spinner { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Summary pills ── */
+#summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
+.pill {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 24px; display: flex; flex-direction: column; gap: 6px;
+}
+.pill-label { font-size: 12px; color: var(--text-dim); }
+.pill-value { font-family: var(--mono); font-size: 24px; font-weight: 600; }
+#pill-orders   .pill-value { color: var(--blue); }
+#pill-revenue  .pill-value { color: var(--green); }
+#pill-cancelled .pill-value { color: var(--red); }
+
+/* ── Section label ── */
+.section-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+}
+
+/* ── Skeleton ── */
+@keyframes shimmer { 0%,100%{opacity:.35} 50%{opacity:.6} }
+.sk-row   { height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; animation: shimmer 1.5s infinite; }
+.sk-chart { height: 240px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); animation: shimmer 1.5s infinite; }
+
+/* ── UTM Table ── */
+#table-outer { overflow-x: auto; }
+#utm-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+#utm-table thead th {
+  text-align: left; padding: 10px 16px; color: var(--text-dim); font-size: 11px;
+  letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+#utm-table thead th:hover { color: var(--text); }
+#utm-table thead th.sort-active { color: var(--blue); }
+#utm-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+#utm-table tbody tr:hover { background: var(--surface); }
+#utm-table tbody td { padding: 12px 16px; vertical-align: middle; }
+.source-cell { display: flex; align-items: center; gap: 10px; }
+.src-icon { width: 22px; height: 22px; flex-shrink: 0; vertical-align: middle; }
+.dim { color: var(--text-dim); }
+.rev { color: var(--green); }
+.can { color: var(--text-muted); }
+.can.has { color: var(--red); }
+.ch-badge {
+  font-size: 10px; padding: 2px 9px;
+  background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(79,142,247,0.3);
+  border-radius: 10px;
+}
+#empty-msg { text-align: center; padding: 48px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+
+/* ── Chart ── */
+#chart-section { margin-top: 36px; }
+#chart-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 16px; }
+.ctrl-group { display: flex; align-items: center; gap: 6px; }
+.ctrl-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+.chart-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px;
+}
+@media (max-width: 600px) {
+  #summary { grid-template-columns: 1fr; }
+  .pill-value { font-size: 20px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <span class="site-title">Glen UTM Dashboard</span>
+    <span class="site-subtitle">UTM and Cancellation Analytics</span>
+    <span class="magic-badge">✦ Magic</span>
+  </header>
+
+  <section id="date-bar">
+    <button class="chip" data-preset="7d">Last 7d</button>
+    <button class="chip" data-preset="30d">Last 30d</button>
+    <button class="chip" data-preset="this-month">This month</button>
+    <button class="chip" data-preset="last-month">Last month</button>
+    <button class="chip" data-preset="custom">Custom</button>
+    <div id="custom-picker">
+      <input type="date" id="from-date">
+      <span class="dim" style="font-family:var(--mono)">→</span>
+      <input type="date" id="to-date">
+      <button id="apply-btn">Fetch</button>
+    </div>
+  </section>
+
+  <div id="status-bar"></div>
+
+  <section id="summary">
+    <div class="pill" id="pill-orders">
+      <span class="pill-label">Magic Orders</span>
+      <span class="pill-value" id="val-orders">—</span>
+    </div>
+    <div class="pill" id="pill-revenue">
+      <span class="pill-label">Total Revenue</span>
+      <span class="pill-value" id="val-revenue">—</span>
+    </div>
+    <div class="pill" id="pill-cancelled">
+      <span class="pill-label">Cancellations</span>
+      <span class="pill-value" id="val-cancelled">—</span>
+    </div>
+  </section>
+
+  <p class="section-label">UTM Breakdown</p>
+  <div id="table-skeleton"></div>
+  <div id="table-outer" style="display:none">
+    <div id="empty-msg" style="display:none">No Magic orders found for this date range.</div>
+    <table id="utm-table">
+      <thead>
+        <tr>
+          <th data-col="utm_source">Source</th>
+          <th data-col="utm_medium">Medium</th>
+          <th data-col="utm_campaign">Campaign</th>
+          <th data-col="orders">Orders</th>
+          <th data-col="revenue">Revenue</th>
+          <th data-col="cancellations">Cancelled</th>
+          <th>Channel</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+
+  <section id="chart-section">
+    <p class="section-label">Trend</p>
+    <div id="chart-controls">
+      <div class="ctrl-group">
+        <span class="ctrl-label">Metric</span>
+        <button class="chip active" data-metric="orders">Orders</button>
+        <button class="chip" data-metric="revenue">Revenue</button>
+        <button class="chip" data-metric="cancellations">Cancellations</button>
+      </div>
+      <div class="ctrl-group" id="source-filter"></div>
+    </div>
+    <div id="chart-skeleton"></div>
+    <div id="chart-box" class="chart-box" style="display:none">
+      <canvas id="trend-chart"></canvas>
+    </div>
+  </section>
+
+</div>
+<script src="config.js"></script>
+<script>
+// ─── Source icons (inline SVG) ──────────────────────────────────────────────────
+const ICONS = {
+  ig:        `<svg class="src-icon" viewBox="0 0 24 24"><defs><linearGradient id="ig-g" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f09433"/><stop offset="50%" stop-color="#dc2743"/><stop offset="100%" stop-color="#bc1888"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-g)"/><circle cx="12" cy="12" r="4.5" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="17.5" cy="6.5" r="1.2" fill="#fff"/></svg>`,
+  instagram: `<svg class="src-icon" viewBox="0 0 24 24"><defs><linearGradient id="ig-g2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f09433"/><stop offset="50%" stop-color="#dc2743"/><stop offset="100%" stop-color="#bc1888"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-g2)"/><circle cx="12" cy="12" r="4.5" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="17.5" cy="6.5" r="1.2" fill="#fff"/></svg>`,
+  fb:        `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4" fill="#1877F2"/><path d="M13.5 12h2l.4-2.5H13.5V8.2c0-.7.3-1.1 1.2-1.1H16V5a16 16 0 00-2.2-.2c-2.2 0-3.6 1.3-3.6 3.7V9.5H8v2.5h2.2V19h3.3V12z" fill="#fff"/></svg>`,
+  facebook:  `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4" fill="#1877F2"/><path d="M13.5 12h2l.4-2.5H13.5V8.2c0-.7.3-1.1 1.2-1.1H16V5a16 16 0 00-2.2-.2c-2.2 0-3.6 1.3-3.6 3.7V9.5H8v2.5h2.2V19h3.3V12z" fill="#fff"/></svg>`,
+  google:    `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M20.5 12a8.6 8.6 0 00-.2-2H12v3.8h4.8a4.1 4.1 0 01-1.8 2.7v2.2h2.9C19.6 17 20.5 14.7 20.5 12z" fill="#4285F4"/><path d="M12 21c2.7 0 5-.9 6.7-2.3l-2.9-2.2a5.1 5.1 0 01-3.8 1c-2.9 0-5.4-2-6.3-4.6H2.7v2.3A10 10 0 0012 21z" fill="#34A853"/><path d="M5.7 12.9a5.8 5.8 0 010-3.8V6.8H2.7a10 10 0 000 10.4l3-2.3z" fill="#FBBC05"/><path d="M12 6.1c1.6 0 3 .6 4.1 1.5l2.7-2.7A10 10 0 002.7 6.8l3 2.3C6.6 7.1 9.1 6.1 12 6.1z" fill="#EA4335"/></svg>`,
+  cpc:       `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M20.5 12a8.6 8.6 0 00-.2-2H12v3.8h4.8a4.1 4.1 0 01-1.8 2.7v2.2h2.9C19.6 17 20.5 14.7 20.5 12z" fill="#4285F4"/><path d="M12 21c2.7 0 5-.9 6.7-2.3l-2.9-2.2a5.1 5.1 0 01-3.8 1c-2.9 0-5.4-2-6.3-4.6H2.7v2.3A10 10 0 0012 21z" fill="#34A853"/><path d="M5.7 12.9a5.8 5.8 0 010-3.8V6.8H2.7a10 10 0 000 10.4l3-2.3z" fill="#FBBC05"/><path d="M12 6.1c1.6 0 3 .6 4.1 1.5l2.7-2.7A10 10 0 002.7 6.8l3 2.3C6.6 7.1 9.1 6.1 12 6.1z" fill="#EA4335"/></svg>`,
+  youtube:   `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="4" fill="#FF0000"/><polygon points="10,8 10,16 17,12" fill="#fff"/></svg>`,
+  whatsapp:  `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#25D366"/><path d="M17.5 14.5c-.3-.2-1.6-.8-1.9-.9-.3-.1-.5-.1-.7.1s-.8 1-.9 1.2-.3.2-.6 0c-1.7-.8-2.8-1.8-3.5-3.2-.2-.4 0-.5.1-.7l.5-.6c.1-.2.1-.3.2-.5s0-.3 0-.5-.8-2-1.1-2.7c-.3-.7-.6-.6-.9-.6h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.8 1.1 3c.1.1 2 3.1 4.9 4.3 2.9 1.2 2.9.8 3.4.7.5 0 1.6-.7 1.8-1.3.2-.6.2-1.2.2-1.3z" fill="#fff"/></svg>`,
+  email:     `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>`,
+  direct:    `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2 3-3 5.5-3 9s1 6 3 9M12 3c2 3 3 5.5 3 9s-1 6-3 9M3 12h18"/></svg>`,
+  default:   `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2 3-3 5.5-3 9s1 6 3 9M12 3c2 3 3 5.5 3 9s-1 6-3 9M3 12h18"/></svg>`,
+};
+
+const COLORS = {
+  ig: '#dc2743', instagram: '#dc2743',
+  fb: '#1877F2', facebook: '#1877F2',
+  google: '#4285F4', cpc: '#4285F4',
+  youtube: '#FF0000',
+  whatsapp: '#25D366',
+  email: '#9CA3AF',
+  '(direct)': '#6B7280',
+};
+
+// ─── Utilities ─────────────────────────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function pad(n)     { return String(n).padStart(2, '0'); }
+
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+const PRESETS = {
+  '7d':         () => ({ from: daysAgo(7),  to: todayStr() }),
+  '30d':        () => ({ from: daysAgo(30), to: todayStr() }),
+  'this-month': () => {
+    const d = new Date();
+    return { from: `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`, to: todayStr() };
+  },
+  'last-month': () => {
+    const d = new Date();
+    d.setDate(1); d.setMonth(d.getMonth() - 1);
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return {
+      from: `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`,
+      to:   `${last.getFullYear()}-${pad(last.getMonth()+1)}-${pad(last.getDate())}`,
+    };
+  },
+};
+
+function formatINR(n) {
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+
+function srcKey(s) { return (s || '').toLowerCase().replace(/[^a-z]/g, '') || 'default'; }
+function getIcon(s)  { return ICONS[srcKey(s)] || ICONS.default; }
+function getColor(s) { return COLORS[srcKey(s)] || '#6B7280'; }
+
+// ─── localStorage cache ────────────────────────────────────────────────────────
+const CACHE_TTL = 24 * 3600 * 1000;
+
+function cacheGet(from, to) {
+  try {
+    const raw = localStorage.getItem(`glen-india:${from}:${to}`);
+    if (!raw) return null;
+    const { data, fetchedAt } = JSON.parse(raw);
+    const fresh = Date.now() - new Date(fetchedAt).getTime() < CACHE_TTL;
+    return { data, fetchedAt, fresh };
+  } catch { return null; }
+}
+
+function cacheSet(from, to, data) {
+  try {
+    localStorage.setItem(`glen-india:${from}:${to}`,
+      JSON.stringify({ data, fetchedAt: new Date().toISOString() }));
+  } catch (_) {}
+}
+
+// ─── Status bar ────────────────────────────────────────────────────────────────
+function setStatus(html) { document.getElementById('status-bar').innerHTML = html; }
+function clearStatus()   { setStatus(''); }
+
+function showLoading() {
+  setStatus(`<div class="status-msg loading"><span class="spinner">⟳</span>&nbsp;Fetching Magic orders from Shopify…</div>`);
+}
+
+function showError(msg, from, to) {
+  setStatus(`<div class="status-msg error">
+    <span>⚠ ${msg}</span>
+    <button class="retry-btn" onclick="loadRange('${from}','${to}')">Retry</button>
+  </div>`);
+}
+
+function showWarning(msg) {
+  setStatus(`<div class="status-msg warning">⚠ ${msg}</div>`);
+}
+
+function showCachedMsg(ts, stale = false) {
+  const when = new Date(ts).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  const txt = stale
+    ? `⟳ Stale cache from ${when} — refreshing in background…`
+    : `✓ Loaded from cache · fetched ${when}`;
+  setStatus(`<div class="status-msg cached">${txt}</div>`);
+}
+
+// ─── Skeletons ─────────────────────────────────────────────────────────────────
+function showTableSkeleton() {
+  document.getElementById('table-skeleton').innerHTML =
+    Array(5).fill('<div class="sk-row"></div>').join('');
+  document.getElementById('table-outer').style.display = 'none';
+}
+
+function hideTableSkeleton() {
+  document.getElementById('table-skeleton').innerHTML = '';
+  document.getElementById('table-outer').style.display = 'block';
+}
+
+function showChartSkeleton() {
+  document.getElementById('chart-skeleton').innerHTML = '<div class="sk-chart"></div>';
+  document.getElementById('chart-box').style.display = 'none';
+}
+
+function hideChartSkeleton() {
+  document.getElementById('chart-skeleton').innerHTML = '';
+  document.getElementById('chart-box').style.display = 'block';
+}
+
+// ─── Render ────────────────────────────────────────────────────────────────────
+function renderSummary(rows) {
+  const orders  = rows.reduce((s, r) => s + r.orders,        0);
+  const rev     = rows.reduce((s, r) => s + r.revenue,       0);
+  const canc    = rows.reduce((s, r) => s + r.cancellations, 0);
+  document.getElementById('val-orders').textContent    = orders.toLocaleString('en-IN');
+  document.getElementById('val-revenue').textContent   = formatINR(rev);
+  document.getElementById('val-cancelled').textContent = canc.toLocaleString('en-IN');
+}
+
+let sortCol = 'orders', sortDir = -1;
+let lastData = null;
+
+function renderTable(rows) {
+  hideTableSkeleton();
+  const empty = document.getElementById('empty-msg');
+  const table = document.getElementById('utm-table');
+  if (!rows.length) {
+    empty.style.display = 'block';
+    table.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  table.style.display = 'table';
+
+  const sorted = [...rows].sort((a, b) => {
+    const av = a[sortCol] ?? '', bv = b[sortCol] ?? '';
+    return sortDir * (av < bv ? -1 : av > bv ? 1 : 0);
+  });
+
+  // Update header indicators
+  document.querySelectorAll('#utm-table thead th[data-col]').forEach(th => {
+    th.classList.remove('sort-active');
+    th.textContent = th.textContent.replace(/ [↑↓]$/, '');
+    if (th.dataset.col === sortCol) {
+      th.classList.add('sort-active');
+      th.textContent += sortDir === -1 ? ' ↓' : ' ↑';
+    }
+  });
+
+  document.getElementById('table-body').innerHTML = sorted.map(r => `
+    <tr>
+      <td><div class="source-cell">${getIcon(r.utm_source)}<span>${r.utm_source}</span></div></td>
+      <td class="dim">${r.utm_medium}</td>
+      <td class="dim">${r.utm_campaign}</td>
+      <td><strong>${r.orders.toLocaleString('en-IN')}</strong></td>
+      <td class="rev">${formatINR(r.revenue)}</td>
+      <td class="can${r.cancellations > 0 ? ' has' : ''}">${r.cancellations}</td>
+      <td><span class="ch-badge">Magic</span></td>
+    </tr>
+  `).join('');
+}
+
+let chart = null;
+let currentMetric = 'orders';
+let activeSource  = '__all__';
+
+function renderChart(timeseries) {
+  hideChartSkeleton();
+  if (!timeseries.length) return;
+
+  const dates   = [...new Set(timeseries.map(r => r.date))].sort();
+  const sources = [...new Set(timeseries.map(r => r.utm_source))];
+
+  // Rebuild source filter chips
+  const sfEl = document.getElementById('source-filter');
+  sfEl.innerHTML = '<span class="ctrl-label">Source</span>';
+  [{ key: '__all__', label: 'All' }, ...sources.map(s => ({ key: s, label: s }))].forEach(({ key, label }) => {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (activeSource === key ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      activeSource = key;
+      renderChart(timeseries);
+    });
+    sfEl.appendChild(btn);
+  });
+
+  const activeSrcs = activeSource === '__all__' ? sources : [activeSource];
+  const datasets = activeSrcs.map(src => ({
+    label: src,
+    data: dates.map(d => {
+      const e = timeseries.find(r => r.date === d && r.utm_source === src);
+      return e ? e[currentMetric] : 0;
+    }),
+    borderColor: getColor(src),
+    backgroundColor: getColor(src) + '22',
+    tension: 0.3,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+  }));
+
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('trend-chart').getContext('2d'), {
+    type: 'line',
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: datasets.length > 1,
+          labels: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 } },
+        },
+        tooltip: {
+          backgroundColor: '#0E1016', borderColor: '#252840', borderWidth: 1,
+          titleColor: '#E8EAEF', bodyColor: '#6B7280',
+          titleFont: { family: 'IBM Plex Mono' }, bodyFont: { family: 'IBM Plex Mono', size: 12 },
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return ` ${ctx.dataset.label}: ${currentMetric === 'revenue' ? formatINR(v) : v}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1C1F2E' },
+          ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, maxRotation: 45 },
+        },
+        y: {
+          grid: { color: '#1C1F2E' },
+          ticks: {
+            color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 },
+            callback: v => currentMetric === 'revenue' ? formatINR(v) : v,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderAll(data) {
+  renderSummary(data.rows);
+  renderTable(data.rows);
+  renderChart(data.timeseries);
+}
+
+// ─── Fetch + cache orchestration ───────────────────────────────────────────────
+let pendingFrom = null, pendingTo = null;
+
+async function loadRange(from, to) {
+  pendingFrom = from; pendingTo = to;
+
+  if ((new Date(to) - new Date(from)) / 86400000 > 180) {
+    showError('Date range exceeds 180 days — please select a shorter range.', from, to);
+    return;
+  }
+
+  const cached = cacheGet(from, to);
+
+  if (cached && cached.fresh) {
+    lastData = cached.data;
+    clearStatus();
+    renderAll(cached.data);
+    showCachedMsg(cached.fetchedAt);
+    return;
+  }
+
+  if (cached) {
+    lastData = cached.data;
+    showCachedMsg(cached.fetchedAt, true);
+    renderAll(cached.data);
+  } else {
+    showLoading();
+    showTableSkeleton();
+    showChartSkeleton();
+  }
+
+  try {
+    const resp = await fetch(`${CONFIG.WORKER_URL}?from=${from}&to=${to}`);
+    if (!resp.ok) throw new Error(`Worker returned ${resp.status}`);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    cacheSet(from, to, data);
+
+    // Only render if this is still the pending range
+    if (pendingFrom === from && pendingTo === to) {
+      lastData = data;
+      if (data.incomplete) showWarning('Large date range — data may be incomplete. Try a shorter period.');
+      else clearStatus();
+      renderAll(data);
+    }
+  } catch (err) {
+    if (pendingFrom === from && pendingTo === to) {
+      if (!cached) showError(err.message, from, to);
+      else showWarning(`Could not refresh: ${err.message}`);
+    }
+  }
+}
+
+// ─── Event wiring ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.chip[data-preset]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chip[data-preset]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const picker = document.getElementById('custom-picker');
+    if (btn.dataset.preset === 'custom') {
+      picker.classList.add('visible');
+    } else {
+      picker.classList.remove('visible');
+      const { from, to } = PRESETS[btn.dataset.preset]();
+      loadRange(from, to);
+    }
+  });
+});
+
+document.getElementById('apply-btn').addEventListener('click', () => {
+  const from = document.getElementById('from-date').value;
+  const to   = document.getElementById('to-date').value;
+  if (!from || !to)  { alert('Please select both dates.'); return; }
+  if (from > to)     { alert('Start date must be before end date.'); return; }
+  loadRange(from, to);
+});
+
+document.querySelectorAll('.chip[data-metric]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.chip[data-metric]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMetric = btn.dataset.metric;
+    if (lastData) renderChart(lastData.timeseries);
+  });
+});
+
+document.querySelectorAll('#utm-table thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    sortDir = sortCol === th.dataset.col ? sortDir * -1 : -1;
+    sortCol = th.dataset.col;
+    if (lastData) renderTable(lastData.rows);
+  });
+});
+
+// ─── Boot: default to Last 30d ─────────────────────────────────────────────────
+document.querySelector('.chip[data-preset="30d"]').click();
+</script>
+</body>
+</html>
