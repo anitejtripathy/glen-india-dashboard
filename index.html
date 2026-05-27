@@ -251,7 +251,7 @@ const COLORS = {
   youtube: '#FF0000',
   whatsapp: '#25D366',
   email: '#9CA3AF',
-  '(direct)': '#6B7280',
+  direct: '#6B7280',
 };
 
 // ─── Utilities ─────────────────────────────────────────────────────────────────
@@ -290,6 +290,14 @@ function srcKey(s) { return (s || '').toLowerCase().replace(/[^a-z]/g, '') || 'd
 function getIcon(s)  { return ICONS[srcKey(s)] || ICONS.default; }
 function getColor(s) { return COLORS[srcKey(s)] || '#6B7280'; }
 
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // ─── localStorage cache ────────────────────────────────────────────────────────
 const CACHE_TTL = 24 * 3600 * 1000;
 
@@ -320,8 +328,8 @@ function showLoading() {
 
 function showError(msg, from, to) {
   setStatus(`<div class="status-msg error">
-    <span>⚠ ${msg}</span>
-    <button class="retry-btn" onclick="loadRange('${from}','${to}')">Retry</button>
+    <span>⚠ ${esc(msg)}</span>
+    <button class="retry-btn" data-retry-from="${esc(from)}" data-retry-to="${esc(to)}">Retry</button>
   </div>`);
 }
 
@@ -401,9 +409,9 @@ function renderTable(rows) {
 
   document.getElementById('table-body').innerHTML = sorted.map(r => `
     <tr>
-      <td><div class="source-cell">${getIcon(r.utm_source)}<span>${r.utm_source}</span></div></td>
-      <td class="dim">${r.utm_medium}</td>
-      <td class="dim">${r.utm_campaign}</td>
+      <td><div class="source-cell">${getIcon(r.utm_source)}<span>${esc(r.utm_source)}</span></div></td>
+      <td class="dim">${esc(r.utm_medium)}</td>
+      <td class="dim">${esc(r.utm_campaign)}</td>
       <td><strong>${r.orders.toLocaleString('en-IN')}</strong></td>
       <td class="rev">${formatINR(r.revenue)}</td>
       <td class="can${r.cancellations > 0 ? ' has' : ''}">${r.cancellations}</td>
@@ -568,11 +576,16 @@ document.querySelectorAll('.chip[data-preset]').forEach(btn => {
   });
 });
 
+document.getElementById('status-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.retry-btn');
+  if (btn) loadRange(btn.dataset.retryFrom, btn.dataset.retryTo);
+});
+
 document.getElementById('apply-btn').addEventListener('click', () => {
   const from = document.getElementById('from-date').value;
   const to   = document.getElementById('to-date').value;
-  if (!from || !to)  { alert('Please select both dates.'); return; }
-  if (from > to)     { alert('Start date must be before end date.'); return; }
+  if (!from || !to)  { showWarning('Please select both dates.'); return; }
+  if (from > to)     { showWarning('Start date must be before end date.'); return; }
   loadRange(from, to);
 });
 
