@@ -441,11 +441,13 @@ function metricLabel(m) {
 }
 
 // ─── localStorage cache ────────────────────────────────────────────────────────
+const CACHE_VERSION = 'v3'; // bump when API response schema changes
 const CACHE_TTL = 24 * 3600 * 1000;
+const cacheKey = (from, to) => `glen-india:${CACHE_VERSION}:${from}:${to}`;
 
 function cacheGet(from, to) {
   try {
-    const raw = localStorage.getItem(`glen-india:${from}:${to}`);
+    const raw = localStorage.getItem(cacheKey(from, to));
     if (!raw) return null;
     const { data, savedAt } = JSON.parse(raw);
     const fresh = Date.now() - new Date(savedAt).getTime() < CACHE_TTL;
@@ -455,7 +457,7 @@ function cacheGet(from, to) {
 
 function cacheSet(from, to, data) {
   try {
-    localStorage.setItem(`glen-india:${from}:${to}`,
+    localStorage.setItem(cacheKey(from, to),
       JSON.stringify({ data, savedAt: new Date().toISOString() }));
   } catch (_) {}
 }
@@ -466,6 +468,7 @@ class MultiSelect {
     this._label = label;
     this._onChange = onChange;
     this._selected = new Set();
+    this._none = false; // explicit "filter to nothing" state
     this._options = [];
     this._wrap = wrapEl;
     this._btn = wrapEl.querySelector('.ms-btn');
@@ -473,7 +476,6 @@ class MultiSelect {
     this._btn.addEventListener('click', e => {
       e.stopPropagation();
       const wasOpen = this._panel.classList.contains('open');
-      // Close all panels first
       document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
       if (!wasOpen) this._panel.classList.add('open');
     });
@@ -490,17 +492,25 @@ class MultiSelect {
   }
 
   reset() {
+    this._none = false;
     this._selected.clear();
     this._renderPanel();
     this._updateBtn();
     this._onChange(this._selected);
   }
 
-  isAll()       { return this._selected.size === 0; }
+  isAll()  { return !this._none && this._selected.size === 0; }
+  isNone() { return this._none; }
   getSelected() { return this._selected; }
 
   _toggleOpt(val) {
-    if (this._selected.size === 0) {
+    const wasNone = this._none;
+    this._none = false;
+    if (wasNone) {
+      // Coming from noneMode → select only this item
+      this._selected.add(val);
+    } else if (this._selected.size === 0) {
+      // Coming from allMode → select all except this one
       this._options.forEach(o => { if (o !== val) this._selected.add(o); });
     } else if (this._selected.has(val)) {
       this._selected.delete(val);
@@ -514,15 +524,25 @@ class MultiSelect {
   }
 
   _renderPanel() {
-    const allMode = this._selected.size === 0;
+    const allMode = this.isAll();
     this._panel.innerHTML = '';
 
     const allLbl = document.createElement('label');
     allLbl.className = 'ms-option';
     const allCb = document.createElement('input');
-    allCb.type = 'checkbox'; allCb.checked = allMode;
+    allCb.type = 'checkbox';
+    allCb.checked = allMode; // checked only when showing all (no filter)
     allCb.addEventListener('change', () => {
-      this._selected.clear(); this._renderPanel(); this._updateBtn(); this._onChange(this._selected);
+      if (allMode) {
+        // Was "all" → switch to "none"
+        this._none = true;
+        this._selected.clear();
+      } else {
+        // Was "none" or partial → switch back to "all"
+        this._none = false;
+        this._selected.clear();
+      }
+      this._renderPanel(); this._updateBtn(); this._onChange(this._selected);
     });
     allLbl.appendChild(allCb);
     allLbl.appendChild(document.createTextNode(' All'));
@@ -548,9 +568,11 @@ class MultiSelect {
   }
 
   _updateBtn() {
-    const n = this._selected.size;
-    if (n > 0) {
-      this._btn.innerHTML = `${this._label} <span class="ms-count">${n}</span> ▾`;
+    if (this._none) {
+      this._btn.innerHTML = `${this._label} <span class="ms-count" style="background:var(--red)">∅</span> ▾`;
+      this._btn.classList.add('has-filter');
+    } else if (this._selected.size > 0) {
+      this._btn.innerHTML = `${this._label} <span class="ms-count">${this._selected.size}</span> ▾`;
       this._btn.classList.add('has-filter');
     } else {
       this._btn.innerHTML = `${this._label} ▾`;
@@ -589,14 +611,20 @@ function populateFilters(data) {
   document.getElementById('filter-bar').style.display = 'flex';
 }
 
+function passesFilter(ms, value) {
+  if (ms.isAll())  return true;
+  if (ms.isNone()) return false;
+  return ms.getSelected().has(value);
+}
+
 function getFilteredRows() {
   if (!lastData) return [];
   return lastData.rows.filter(r =>
-    (msSource.isAll()   || msSource.getSelected().has(r.utm_source))   &&
-    (msMedium.isAll()   || msMedium.getSelected().has(r.utm_medium))   &&
-    (msCampaign.isAll() || msCampaign.getSelected().has(r.utm_campaign)) &&
-    (msContent.isAll()  || msContent.getSelected().has(r.utm_content || '')) &&
-    (msTerm.isAll()     || msTerm.getSelected().has(r.utm_term || ''))
+    passesFilter(msSource,   r.utm_source)      &&
+    passesFilter(msMedium,   r.utm_medium)      &&
+    passesFilter(msCampaign, r.utm_campaign)    &&
+    passesFilter(msContent,  r.utm_content || '') &&
+    passesFilter(msTerm,     r.utm_term    || '')
   );
 }
 
@@ -836,7 +864,7 @@ function setSyncBar(data, from, to) {
 }
 
 function triggerRefetch(from, to) {
-  localStorage.removeItem(`glen-india:${from}:${to}`);
+  localStorage.removeItem(cacheKey(from, to));
   pendingFrom = from; pendingTo = to;
   clearStatus();
   document.getElementById('sync-bar').innerHTML = '';
