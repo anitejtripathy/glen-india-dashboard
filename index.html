@@ -986,17 +986,19 @@ function doDownloadTSV(rows) {
     'Duties (last click)','Additional fees (last click)','Taxes (last click)',
     'Total sales (last click)','Net items sold (last click)',
   ];
-  const lines = rows.map(r => [
-    r.utm_source, r.utm_medium, r.utm_campaign,
-    r.utm_content || '', r.utm_term || '',
-    r.product_type || '', r.product_title || '',
-    referringChannel(r.utm_medium), referringPlatform(r.utm_source),
-    r.month,
-    r.orders, r.gross_sales, r.discounts,
-    r.returns, r.net_sales, r.shipping,
-    r.duties, r.additional_fees, r.taxes,
-    r.total_sales, r.net_items,
-  ].join('\t'));
+  const lines = rows
+    .filter(r => r.utm_medium !== 'organic')   // exclude organic (unattributed) traffic
+    .map(r => [
+      r.utm_source, r.utm_medium, r.utm_campaign,
+      r.utm_content || '', r.utm_term || '',
+      r.product_type || '', r.product_title || '',
+      referringChannel(r.utm_medium), referringPlatform(r.utm_source),
+      r.month,
+      r.orders, r.gross_sales, r.discounts,
+      r.returns, r.net_sales, r.shipping,
+      r.duties, r.additional_fees, r.taxes,
+      r.total_sales, r.net_items,
+    ].join('\t'));
   const tsv = [headers.join('\t'), ...lines].join('\n');
   const blob = new Blob([tsv], { type: 'text/tab-separated-values' });
   const a = document.createElement('a');

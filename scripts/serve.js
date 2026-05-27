@@ -166,6 +166,18 @@ function processLineItems(orders) {
     const lineItems = order.line_items || [];
     const numItems  = Math.max(lineItems.length, 1);
     const totalTaxP = Math.round(parseFloat(order.total_tax || '0') * 100);
+
+    // Build refund map: line_item_id → { returnAmountP, returnQty }
+    const refundMap = {};
+    for (const refund of (order.refunds || [])) {
+      for (const rli of (refund.refund_line_items || [])) {
+        const lid = String(rli.line_item_id);
+        if (!refundMap[lid]) refundMap[lid] = { returnAmountP: 0, returnQty: 0 };
+        refundMap[lid].returnAmountP += Math.round(parseFloat(rli.subtotal || '0') * 100);
+        refundMap[lid].returnQty     += rli.quantity || 0;
+      }
+    }
+
     for (const item of lineItems) {
       const productType  = item.product_type || '';
       const productTitle = item.title || '';
@@ -173,23 +185,27 @@ function processLineItems(orders) {
       const grossP = Math.round(parseFloat(item.price || '0') * qty * 100);
       const discP  = Math.round(parseFloat(item.total_discount || '0') * 100);
       const taxP   = Math.round(totalTaxP / numItems);
+      const ref    = refundMap[String(item.id)] || { returnAmountP: 0, returnQty: 0 };
       const rk = `${utm_source}|${utm_medium}|${utm_campaign}|${utm_content}|${utm_term}|${productType}|${productTitle}|${month}`;
       if (!rowMap[rk]) {
         rowMap[rk] = { utm_source, utm_medium, utm_campaign, utm_content, utm_term,
           product_type: productType, product_title: productTitle, month,
-          _ids: new Set(), grossP: 0, discP: 0, taxP: 0, netItems: 0 };
+          _ids: new Set(), grossP: 0, discP: 0, taxP: 0, returnP: 0, netItems: 0 };
       }
       rowMap[rk]._ids.add(String(order.id));
       rowMap[rk].grossP   += grossP;
       rowMap[rk].discP    += discP;
       rowMap[rk].taxP     += taxP;
+      rowMap[rk].returnP  += ref.returnAmountP;
       rowMap[rk].netItems += qty;
     }
   }
-  return Object.values(rowMap).map(({ _ids, grossP, discP, taxP, netItems, ...r }) => {
-    const gross = grossP / 100, disc = discP / 100, tax = taxP / 100, net = gross - disc;
+  return Object.values(rowMap).map(({ _ids, grossP, discP, taxP, returnP, netItems, ...r }) => {
+    const gross   = grossP / 100, disc = discP / 100, tax = taxP / 100;
+    const returns = returnP / 100;
+    const net     = gross - disc - returns;
     return { ...r, orders: _ids.size,
-      gross_sales: round2(gross), discounts: round2(disc), returns: 0,
+      gross_sales: round2(gross), discounts: round2(disc), returns: round2(returns),
       net_sales: round2(net), shipping: 0, duties: 0, additional_fees: 0,
       taxes: round2(tax), total_sales: round2(net + tax), net_items: netItems };
   });
@@ -275,7 +291,7 @@ async function handleApi(req, res, parsedUrl) {
     for (const chunk of monthChunks(from, to)) {
       try {
         const orders = await fetchAllOrders(chunk.from, chunk.to, token,
-          'id,tags,note_attributes,created_at,line_items,total_tax');
+          'id,tags,note_attributes,created_at,line_items,total_tax,refunds');
         allOrders.push(...orders);
       } catch (err) {
         res.writeHead(502, { 'Content-Type': 'application/json' });
