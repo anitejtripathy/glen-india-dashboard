@@ -286,7 +286,7 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
 
   <section id="summary">
     <div class="pill" id="pill-orders">
-      <span class="pill-label">Magic Orders</span>
+      <span class="pill-label">Magic Orders <span style="font-size:10px;opacity:0.55;font-weight:400">(With UTM)</span></span>
       <span class="pill-value" id="val-orders">—</span>
     </div>
     <div class="pill" id="pill-revenue">
@@ -316,13 +316,13 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
           <th data-col="utm_source">Source</th>
           <th data-col="utm_medium">Medium</th>
           <th data-col="utm_campaign">Campaign</th>
-          <th data-col="utm_content">Content</th>
-          <th data-col="utm_term">Term</th>
           <th data-col="orders">Orders</th>
           <th data-col="revenue">Revenue</th>
           <th data-col="cancellations">Cancelled</th>
           <th data-col="cancelledRevenue">Canc. Rev</th>
           <th class="no-sort">Channel</th>
+          <th data-col="utm_content">Content</th>
+          <th data-col="utm_term">Term</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -441,7 +441,7 @@ function metricLabel(m) {
 }
 
 // ─── localStorage cache ────────────────────────────────────────────────────────
-const CACHE_VERSION = 'v3'; // bump when API response schema changes
+const CACHE_VERSION = 'v4'; // bump when API response schema changes
 const CACHE_TTL = 24 * 3600 * 1000;
 const cacheKey = (from, to) => `glen-india:${CACHE_VERSION}:${from}:${to}`;
 
@@ -602,12 +602,12 @@ function initFilters() {
 
 function populateFilters(data) {
   const uniq = arr => [...new Set(arr)].filter(v => v != null && v !== '').sort();
-  msSource.setOptions(uniq(data.rows.map(r => r.utm_source)));
+  msSource.setOptions(uniq(data.rows.map(r => r.utm_source).filter(s => s !== '(direct)')));
   msMedium.setOptions(uniq(data.rows.map(r => r.utm_medium)));
   msCampaign.setOptions(uniq(data.rows.map(r => r.utm_campaign)));
   msContent.setOptions(uniq(data.rows.map(r => r.utm_content || '')));
   msTerm.setOptions(uniq(data.rows.map(r => r.utm_term || '')));
-  msChartSource.setOptions(uniq(data.timeseries.map(r => r.utm_source)));
+  msChartSource.setOptions(uniq(data.timeseries.map(r => r.utm_source).filter(s => s !== '(direct)')));
   document.getElementById('filter-bar').style.display = 'flex';
 }
 
@@ -620,6 +620,7 @@ function passesFilter(ms, value) {
 function getFilteredRows() {
   if (!lastData) return [];
   return lastData.rows.filter(r =>
+    r.utm_source !== '(direct)'                 &&
     passesFilter(msSource,   r.utm_source)      &&
     passesFilter(msMedium,   r.utm_medium)      &&
     passesFilter(msCampaign, r.utm_campaign)    &&
@@ -722,13 +723,13 @@ function renderTable(rows) {
       <td><div class="source-cell">${getIcon(r.utm_source)}<span>${esc(r.utm_source)}</span></div></td>
       <td class="dim">${esc(r.utm_medium)}</td>
       <td class="dim">${esc(r.utm_campaign)}</td>
-      <td class="dim">${esc(r.utm_content || '')}</td>
-      <td class="dim">${esc(r.utm_term || '')}</td>
       <td><strong>${r.orders.toLocaleString('en-IN')}</strong></td>
       <td class="rev">${formatINR(r.revenue)}</td>
       <td class="can${r.cancellations > 0 ? ' has' : ''}">${r.cancellations}</td>
       <td class="canrev${(r.cancelledRevenue||0) > 0 ? ' has' : ''}">${formatINR(r.cancelledRevenue || 0)}</td>
       <td><span class="ch-badge">Magic</span></td>
+      <td class="dim">${esc(r.utm_content || '')}</td>
+      <td class="dim">${esc(r.utm_term || '')}</td>
     </tr>
   `).join('');
 }
@@ -743,7 +744,7 @@ function renderChart(timeseries) {
   if (!timeseries.length) return;
 
   const dates   = [...new Set(timeseries.map(r => r.date))].sort();
-  const allSrcs = [...new Set(timeseries.map(r => r.utm_source))];
+  const allSrcs = [...new Set(timeseries.map(r => r.utm_source))].filter(s => s !== '(direct)');
 
   msChartSource.setOptions(allSrcs);
 

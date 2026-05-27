@@ -177,7 +177,7 @@ function mergeChunkResults(results) {
 // ─── Shopify pagination ────────────────────────────────────────────────────────
 
 async function fetchAllOrders(from, to, token, fields) {
-  if (!fields) fields = 'id,tags,note_attributes,current_total_price,cancelled_at,cancel_reason,created_at';
+  if (!fields) fields = 'id,tags,note_attributes,current_total_price,total_price,cancelled_at,cancel_reason,created_at';
   const baseUrl = 'https://glen-india.myshopify.com/admin/api/2024-10/orders.json';
   let nextUrl   = `${baseUrl}?tag=Magic`
     + `&created_at_min=${from}T00:00:00%2B05:30`
@@ -325,7 +325,8 @@ function processOrders(orders) {
     const { utm_source, utm_medium, utm_campaign, utm_content, utm_term } = extractUTM(order.note_attributes);
     const revenueP         = Math.round(parseFloat(order.current_total_price || '0') * 100);
     const cancelled        = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
-    const cancelledRevenueP = cancelled ? revenueP : 0;
+    const origRevenueP     = Math.round(parseFloat(order.total_price || order.current_total_price || '0') * 100);
+    const cancelledRevenueP = cancelled ? origRevenueP : 0;
     const date = order.created_at
       ? new Date(order.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
       : '';
