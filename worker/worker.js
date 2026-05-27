@@ -4,7 +4,8 @@ export default {
 
     // CORS preflight
     if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders(env.ALLOWED_ORIGIN) });
+      if (origin !== env.ALLOWED_ORIGIN) return new Response(null, { status: 403 });
+      return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
 
     // Origin guard — only respond to the configured GitHub Pages URL
@@ -18,6 +19,9 @@ export default {
 
     if (!isDate(from) || !isDate(to)) {
       return jsonResp({ error: 'from and to must be YYYY-MM-DD' }, 400, origin);
+    }
+    if (from > to) {
+      return jsonResp({ error: 'from must be before or equal to to' }, 400, origin);
     }
 
     // KV cache check
@@ -59,9 +63,15 @@ function jsonResp(body, status, origin, raw = false) {
   });
 }
 
-function isDate(s) { return /^\d{4}-\d{2}-\d{2}$/.test(s); }
+function isDate(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  return !isNaN(d) && d.toISOString().slice(0, 10) === s;
+}
 
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayStr() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+}
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -97,7 +107,10 @@ async function fetchWithBackoff(url, token, retries = 3) {
   for (let i = 0; i < retries; i++) {
     const resp = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
     if (resp.status !== 429) {
-      if (!resp.ok) throw new Error(`Shopify API returned ${resp.status}`);
+      if (!resp.ok) {
+        await resp.body?.cancel();
+        throw new Error(`Shopify API returned ${resp.status}`);
+      }
       return resp;
     }
     await sleep(1000 * Math.pow(2, i)); // 1s, 2s, 4s
@@ -115,7 +128,11 @@ function parseNextLink(header) {
 
 function extractUTM(noteAttributes) {
   // Build a flat key→value map from note_attributes array
-  const a = Object.fromEntries((noteAttributes || []).map(({ name, value }) => [name, value]));
+  const a = Object.fromEntries(
+    (noteAttributes || [])
+      .filter(attr => attr != null && attr.name != null)
+      .map(({ name, value }) => [name, value])
+  );
 
   let source   = a['utm_source'];
   let medium   = a['utm_medium'];
@@ -160,9 +177,12 @@ function processOrders(orders) {
     if (!tags.includes('magic')) continue;
 
     const { utm_source, utm_medium, utm_campaign } = extractUTM(order.note_attributes);
-    const revenue   = parseFloat(order.current_total_price || '0');
+    const revenueP  = Math.round(parseFloat(order.current_total_price || '0') * 100);
     const cancelled = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
-    const date      = (order.created_at || '').slice(0, 10);
+    const date = order.created_at
+      ? new Date(order.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+      : '';
+    if (!date) continue;
 
     // Table aggregation: group by source + medium + campaign
     const tk = `${utm_source}|${utm_medium}|${utm_campaign}`;
@@ -170,7 +190,7 @@ function processOrders(orders) {
       tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, channel: 'Magic' };
     }
     tableMap[tk].orders        += 1;
-    tableMap[tk].revenue       += revenue;
+    tableMap[tk].revenue       += revenueP;
     tableMap[tk].cancellations += cancelled;
 
     // Timeseries aggregation: group by date + source
@@ -179,16 +199,16 @@ function processOrders(orders) {
       tsMap[sk] = { date, utm_source, orders: 0, revenue: 0, cancellations: 0 };
     }
     tsMap[sk].orders        += 1;
-    tsMap[sk].revenue       += revenue;
+    tsMap[sk].revenue       += revenueP;
     tsMap[sk].cancellations += cancelled;
   }
 
   const rows = Object.values(tableMap)
-    .map(r => ({ ...r, revenue: Math.round(r.revenue * 100) / 100 }))
+    .map(r => ({ ...r, revenue: r.revenue / 100 }))
     .sort((a, b) => b.orders - a.orders);
 
   const timeseries = Object.values(tsMap)
-    .map(r => ({ ...r, revenue: Math.round(r.revenue * 100) / 100 }))
+    .map(r => ({ ...r, revenue: r.revenue / 100 }))
     .sort((a, b) => a.date < b.date ? -1 : 1);
 
   return { rows, timeseries, incomplete: false };
