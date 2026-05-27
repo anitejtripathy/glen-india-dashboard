@@ -7,7 +7,7 @@ compatibility_date = "2024-10-01"
 # paste the returned id below.
 [[kv_namespaces]]
 binding = "GLEN_INDIA_CACHE"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "189b958800a54672b615b2b0b7475195"
 
 [vars]
 # GitHub Pages origin — the browser's Origin header from anitejtripathy.github.io/*
