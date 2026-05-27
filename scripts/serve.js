@@ -99,7 +99,7 @@ function extractUTM(noteAttributes) {
   if ((!source || !medium || !campaign) && a['_eventSourceUrl']) {
     try { const u = new URL(a['_eventSourceUrl']); source=source||u.searchParams.get('utm_source'); medium=medium||u.searchParams.get('utm_medium'); campaign=campaign||u.searchParams.get('utm_campaign'); } catch(_) {}
   }
-  return { utm_source:(source||'(direct)').toLowerCase(), utm_medium:(medium||'(none)').toLowerCase(), utm_campaign:(campaign||'(not set)').toLowerCase() };
+  return { utm_source:(source?.trim()||'(direct)').toLowerCase(), utm_medium:(medium?.trim()||'(none)').toLowerCase(), utm_campaign:(campaign?.trim()||'(not set)').toLowerCase() };
 }
 
 function processOrders(orders) {
