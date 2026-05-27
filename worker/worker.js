@@ -23,11 +23,17 @@ export default {
     if (from > to) {
       return jsonResp({ error: 'from must be before or equal to to' }, 400, origin);
     }
+    if (from < '2026-01-01') {
+      return jsonResp({ error: 'Data is only available from 2026-01-01' }, 400, origin);
+    }
 
     // KV cache check
+    const refresh  = url.searchParams.get('refresh') === '1';
     const cacheKey = `glen-india:${from}:${to}`;
-    const cached   = await env.GLEN_INDIA_CACHE.get(cacheKey);
-    if (cached) return jsonResp(cached, 200, origin, true);
+    if (!refresh) {
+      const cached = await env.GLEN_INDIA_CACHE.get(cacheKey);
+      if (cached) return jsonResp(cached, 200, origin, true);
+    }
 
     // Fetch from Shopify
     let orders;
@@ -37,7 +43,7 @@ export default {
       return jsonResp({ error: err.message, incomplete: true }, 502, origin);
     }
 
-    const result = processOrders(orders);
+    const result = { ...processOrders(orders), fetchedAt: new Date().toISOString() };
     // Historical ranges cache for 24h; ranges including today cache for 1h
     const ttl = to >= todayStr() ? 3600 : 86400;
     await env.GLEN_INDIA_CACHE.put(cacheKey, JSON.stringify(result), { expirationTtl: ttl });
