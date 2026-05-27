@@ -1,0 +1,2 @@
+# local data cache (can be large, re-generate with backfill.js)
+data/cache/*.json
