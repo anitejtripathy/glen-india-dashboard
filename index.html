@@ -147,6 +147,34 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
   #summary { grid-template-columns: 1fr; }
   .pill-value { font-size: 20px; }
 }
+
+/* ── Sync bar ── */
+#sync-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 16px; min-height: 0;
+}
+.sync-chip {
+  font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+}
+.sync-chip .sync-dot { color: var(--green); margin-right: 4px; }
+.refetch-btn {
+  font-family: var(--mono); font-size: 11px; padding: 4px 12px;
+  background: transparent; border: 1px solid var(--border2); color: var(--text-dim);
+  border-radius: 20px; cursor: pointer; transition: all 0.15s;
+}
+.refetch-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── Download button ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-header .section-label { margin-bottom: 0; }
+.download-btn {
+  font-family: var(--mono); font-size: 11px; padding: 4px 12px;
+  background: transparent; border: 1px solid var(--border2); color: var(--text-dim);
+  border-radius: 6px; cursor: pointer; transition: all 0.15s;
+}
+.download-btn:hover { border-color: var(--blue); color: var(--blue); }
 </style>
 </head>
 <body>
@@ -165,14 +193,15 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
     <button class="chip" data-preset="last-month">Last month</button>
     <button class="chip" data-preset="custom">Custom</button>
     <div id="custom-picker">
-      <input type="date" id="from-date">
+      <input type="date" id="from-date" min="2026-01-01">
       <span class="dim" style="font-family:var(--mono)">→</span>
-      <input type="date" id="to-date">
+      <input type="date" id="to-date" min="2026-01-01">
       <button id="apply-btn">Fetch</button>
     </div>
   </section>
 
   <div id="status-bar"></div>
+  <div id="sync-bar"></div>
 
   <section id="summary">
     <div class="pill" id="pill-orders">
@@ -189,7 +218,10 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
     </div>
   </section>
 
-  <p class="section-label">UTM Breakdown</p>
+  <div class="section-header">
+    <p class="section-label">UTM Breakdown</p>
+    <button id="download-btn" class="download-btn" style="display:none">↓ Download CSV</button>
+  </div>
   <div id="table-skeleton"></div>
   <div id="table-outer" style="display:none">
     <div id="empty-msg" style="display:none">No Magic orders found for this date range.</div>
@@ -254,6 +286,9 @@ const COLORS = {
   direct: '#6B7280',
 };
 
+const MIN_DATE = '2026-01-01';
+function clampFrom(d) { return d < MIN_DATE ? MIN_DATE : d; }
+
 // ─── Utilities ─────────────────────────────────────────────────────────────────
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function pad(n)     { return String(n).padStart(2, '0'); }
@@ -265,18 +300,18 @@ function daysAgo(n) {
 }
 
 const PRESETS = {
-  '7d':         () => ({ from: daysAgo(7),  to: todayStr() }),
-  '30d':        () => ({ from: daysAgo(30), to: todayStr() }),
+  '7d':         () => ({ from: clampFrom(daysAgo(7)),  to: todayStr() }),
+  '30d':        () => ({ from: clampFrom(daysAgo(30)), to: todayStr() }),
   'this-month': () => {
     const d = new Date();
-    return { from: `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`, to: todayStr() };
+    return { from: clampFrom(`${d.getFullYear()}-${pad(d.getMonth()+1)}-01`), to: todayStr() };
   },
   'last-month': () => {
     const d = new Date();
     d.setDate(1); d.setMonth(d.getMonth() - 1);
     const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     return {
-      from: `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`,
+      from: clampFrom(`${d.getFullYear()}-${pad(d.getMonth()+1)}-01`),
       to:   `${last.getFullYear()}-${pad(last.getMonth()+1)}-${pad(last.getDate())}`,
     };
   },
@@ -382,6 +417,8 @@ let lastData = null;
 
 function renderTable(rows) {
   hideTableSkeleton();
+  const dlBtn = document.getElementById('download-btn');
+  if (dlBtn) dlBtn.style.display = rows.length ? 'inline-block' : 'none';
   const empty = document.getElementById('empty-msg');
   const table = document.getElementById('utm-table');
   if (!rows.length) {
@@ -508,6 +545,48 @@ function renderAll(data) {
 
 // ─── Fetch + cache orchestration ───────────────────────────────────────────────
 let pendingFrom = null, pendingTo = null;
+let currentFrom = null, currentTo = null;
+
+function setSyncBar(data, from, to) {
+  const bar = document.getElementById('sync-bar');
+  if (!data || !data.fetchedAt) { bar.innerHTML = ''; return; }
+  const when = new Date(data.fetchedAt).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short',
+  });
+  const canRefetch = to >= todayStr();
+  bar.innerHTML = `<span class="sync-chip"><span class="sync-dot">●</span>Synced ${when}</span>`
+    + (canRefetch ? `<button class="refetch-btn" id="refetch-btn">↺ Refresh</button>` : '');
+  if (canRefetch) {
+    document.getElementById('refetch-btn').addEventListener('click', () => triggerRefetch(from, to));
+  }
+}
+
+function triggerRefetch(from, to) {
+  localStorage.removeItem(`glen-india:${from}:${to}`);
+  pendingFrom = from; pendingTo = to;
+  clearStatus();
+  document.getElementById('sync-bar').innerHTML = '';
+  showLoading();
+  showTableSkeleton();
+  showChartSkeleton();
+  fetch(`${CONFIG.WORKER_URL}?from=${from}&to=${to}&refresh=1`)
+    .then(r => { if (!r.ok) throw new Error(`Worker returned ${r.status}`); return r.json(); })
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      cacheSet(from, to, data);
+      if (pendingFrom === from && pendingTo === to) {
+        currentFrom = from; currentTo = to;
+        lastData = data;
+        if (data.incomplete) showWarning('Large date range — data may be incomplete. Try a shorter period.');
+        else clearStatus();
+        renderAll(data);
+        setSyncBar(data, from, to);
+      }
+    })
+    .catch(err => {
+      if (pendingFrom === from && pendingTo === to) showError(err.message, from, to);
+    });
+}
 
 async function loadRange(from, to) {
   pendingFrom = from; pendingTo = to;
@@ -523,14 +602,17 @@ async function loadRange(from, to) {
     lastData = cached.data;
     clearStatus();
     renderAll(cached.data);
-    showCachedMsg(cached.fetchedAt);
+    currentFrom = from; currentTo = to;
+    setSyncBar(lastData, from, to);
     return;
   }
 
   if (cached) {
     lastData = cached.data;
-    showCachedMsg(cached.fetchedAt, true);
+    currentFrom = from; currentTo = to;
     renderAll(cached.data);
+    setSyncBar(lastData, from, to);
+    showCachedMsg(cached.fetchedAt, true);
   } else {
     showLoading();
     showTableSkeleton();
@@ -548,9 +630,11 @@ async function loadRange(from, to) {
     // Only render if this is still the pending range
     if (pendingFrom === from && pendingTo === to) {
       lastData = data;
+      currentFrom = from; currentTo = to;
       if (data.incomplete) showWarning('Large date range — data may be incomplete. Try a shorter period.');
       else clearStatus();
       renderAll(data);
+      setSyncBar(data, from, to);
     }
   } catch (err) {
     if (pendingFrom === from && pendingTo === to) {
@@ -558,6 +642,34 @@ async function loadRange(from, to) {
       else showWarning(`Could not refresh: ${err.message}`);
     }
   }
+}
+
+// ─── CSV download ──────────────────────────────────────────────────────────────
+function downloadCSV() {
+  if (!lastData || !lastData.rows.length) return;
+  const rows = lastData.rows;
+  if (rows.length > 1000) {
+    showWarning(`Large export (${rows.length} rows) — preparing download…`);
+    setTimeout(() => { doDownload(rows); clearStatus(); }, 100);
+  } else {
+    doDownload(rows);
+  }
+}
+
+function doDownload(rows) {
+  const header = 'Source,Medium,Campaign,Orders,Revenue,Cancellations,Channel';
+  const lines = rows.map(r =>
+    [r.utm_source, r.utm_medium, r.utm_campaign, r.orders, r.revenue.toFixed(2), r.cancellations, r.channel]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`)
+      .join(',')
+  );
+  const csv = [header, ...lines].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `glen-india-utm-${currentFrom || 'export'}_${currentTo || ''}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 // ─── Event wiring ──────────────────────────────────────────────────────────────
@@ -605,6 +717,8 @@ document.querySelectorAll('#utm-table thead th[data-col]').forEach(th => {
     if (lastData) renderTable(lastData.rows);
   });
 });
+
+document.getElementById('download-btn').addEventListener('click', downloadCSV);
 
 // ─── Boot: default to Last 30d ─────────────────────────────────────────────────
 document.querySelector('.chip[data-preset="30d"]').click();
