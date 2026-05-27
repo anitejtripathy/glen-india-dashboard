@@ -29,7 +29,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
-#app { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+#app { max-width: 1280px; margin: 0 auto; padding: 32px 24px 80px; }
 
 /* ── Header ── */
 header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
@@ -73,10 +73,10 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
   font-family: var(--mono); font-size: 12px; padding: 10px 16px; border-radius: 6px;
   display: flex; align-items: center; gap: 10px;
 }
-.status-msg.error   { background: var(--red-dim);                 color: var(--red);   border: 1px solid rgba(239,68,68,0.3); }
-.status-msg.warning { background: rgba(245,166,35,0.08);          color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
-.status-msg.cached  { background: var(--surface);                 color: var(--text-dim); border: 1px solid var(--border); }
-.status-msg.loading { background: var(--surface);                 color: var(--text-dim); border: 1px solid var(--border); }
+.status-msg.error   { background: var(--red-dim);            color: var(--red);      border: 1px solid rgba(239,68,68,0.3); }
+.status-msg.warning { background: rgba(245,166,35,0.08);     color: var(--amber);    border: 1px solid rgba(245,166,35,0.3); }
+.status-msg.cached  { background: var(--surface);            color: var(--text-dim); border: 1px solid var(--border); }
+.status-msg.loading { background: var(--surface);            color: var(--text-dim); border: 1px solid var(--border); }
 .retry-btn {
   font-family: var(--mono); font-size: 11px; padding: 3px 10px;
   border: 1px solid var(--red); color: var(--red); background: transparent;
@@ -84,69 +84,6 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
 }
 .spinner { display: inline-block; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Summary pills ── */
-#summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px; }
-.pill {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px 24px; display: flex; flex-direction: column; gap: 6px;
-}
-.pill-label { font-size: 12px; color: var(--text-dim); }
-.pill-value { font-family: var(--mono); font-size: 24px; font-weight: 600; }
-#pill-orders   .pill-value { color: var(--blue); }
-#pill-revenue  .pill-value { color: var(--green); }
-#pill-cancelled .pill-value { color: var(--red); }
-
-/* ── Section label ── */
-.section-label {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
-}
-
-/* ── Skeleton ── */
-@keyframes shimmer { 0%,100%{opacity:.35} 50%{opacity:.6} }
-.sk-row   { height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; animation: shimmer 1.5s infinite; }
-.sk-chart { height: 240px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); animation: shimmer 1.5s infinite; }
-
-/* ── UTM Table ── */
-#table-outer { overflow-x: auto; }
-#utm-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
-#utm-table thead th {
-  text-align: left; padding: 10px 16px; color: var(--text-dim); font-size: 11px;
-  letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 1px solid var(--border);
-  cursor: pointer; user-select: none; white-space: nowrap;
-}
-#utm-table thead th:hover { color: var(--text); }
-#utm-table thead th.sort-active { color: var(--blue); }
-#utm-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-#utm-table tbody tr:hover { background: var(--surface); }
-#utm-table tbody td { padding: 12px 16px; vertical-align: middle; }
-.source-cell { display: flex; align-items: center; gap: 10px; }
-.src-icon { width: 22px; height: 22px; flex-shrink: 0; vertical-align: middle; }
-.dim { color: var(--text-dim); }
-.rev { color: var(--green); }
-.can { color: var(--text-muted); }
-.can.has { color: var(--red); }
-.ch-badge {
-  font-size: 10px; padding: 2px 9px;
-  background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(79,142,247,0.3);
-  border-radius: 10px;
-}
-#empty-msg { text-align: center; padding: 48px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
-
-/* ── Chart ── */
-#chart-section { margin-top: 36px; }
-#chart-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 16px; }
-.ctrl-group { display: flex; align-items: center; gap: 6px; }
-.ctrl-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
-.chart-box {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 24px;
-}
-@media (max-width: 600px) {
-  #summary { grid-template-columns: 1fr; }
-  .pill-value { font-size: 20px; }
-}
 
 /* ── Sync bar ── */
 #sync-bar {
@@ -166,6 +103,119 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
 }
 .refetch-btn:hover { border-color: var(--blue); color: var(--blue); }
 
+/* ── Multi-select dropdown ── */
+.ms-wrap { position: relative; display: inline-block; }
+.ms-btn {
+  font-family: var(--mono); font-size: 12px; padding: 6px 12px;
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text-dim);
+  border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap; transition: border-color 0.15s;
+}
+.ms-btn:hover { border-color: var(--blue); color: var(--text); }
+.ms-btn.has-filter { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+.ms-count {
+  background: var(--blue); color: #fff; border-radius: 10px;
+  font-size: 10px; padding: 1px 6px; min-width: 18px; text-align: center; line-height: 1.4;
+}
+.ms-panel {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 200;
+  background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px;
+  padding: 6px 0; min-width: 180px; max-height: 280px; overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
+}
+.ms-panel.open { display: block; }
+.ms-option {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; cursor: pointer; font-family: var(--mono); font-size: 12px;
+  color: var(--text-dim); transition: background 0.1s; user-select: none;
+}
+.ms-option:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.ms-option input[type="checkbox"] { accent-color: var(--blue); cursor: pointer; flex-shrink: 0; }
+.ms-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* ── Filter bar ── */
+#filter-bar {
+  display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 20px; padding: 12px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.filter-reset-btn {
+  font-family: var(--mono); font-size: 11px; padding: 5px 10px;
+  background: transparent; border: 1px solid var(--border2); color: var(--text-muted);
+  border-radius: 6px; cursor: pointer; transition: all 0.15s; margin-left: 4px;
+}
+.filter-reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* ── Summary pills ── */
+#summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px; margin-bottom: 28px;
+}
+.pill {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px 24px; display: flex; flex-direction: column; gap: 6px;
+}
+.pill-label { font-size: 12px; color: var(--text-dim); }
+.pill-value { font-family: var(--mono); font-size: 22px; font-weight: 600; }
+#pill-orders    .pill-value { color: var(--blue); }
+#pill-revenue   .pill-value { color: var(--green); }
+#pill-cancelled .pill-value { color: var(--red); }
+#pill-canc-rev  .pill-value { color: var(--amber); }
+
+/* ── Section label ── */
+.section-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px;
+}
+
+/* ── Skeleton ── */
+@keyframes shimmer { 0%,100%{opacity:.35} 50%{opacity:.6} }
+.sk-row   { height: 44px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; animation: shimmer 1.5s infinite; }
+.sk-chart { height: 240px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); animation: shimmer 1.5s infinite; }
+
+/* ── UTM Table ── */
+#table-outer { overflow-x: auto; }
+#utm-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+#utm-table thead th {
+  text-align: left; padding: 10px 14px; color: var(--text-dim); font-size: 11px;
+  letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; white-space: nowrap;
+}
+#utm-table thead th:hover { color: var(--text); }
+#utm-table thead th.sort-active { color: var(--blue); }
+#utm-table thead th.no-sort { cursor: default; }
+#utm-table thead th.no-sort:hover { color: var(--text-dim); }
+#utm-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+#utm-table tbody tr:hover { background: var(--surface); }
+#utm-table tbody td { padding: 11px 14px; vertical-align: middle; }
+.source-cell { display: flex; align-items: center; gap: 10px; }
+.src-icon { width: 22px; height: 22px; flex-shrink: 0; vertical-align: middle; }
+.dim { color: var(--text-dim); }
+.rev { color: var(--green); }
+.can { color: var(--text-muted); }
+.can.has { color: var(--red); }
+.canrev { color: var(--text-muted); }
+.canrev.has { color: var(--amber); }
+.ch-badge {
+  font-size: 10px; padding: 2px 9px;
+  background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(79,142,247,0.3);
+  border-radius: 10px;
+}
+#empty-msg { text-align: center; padding: 48px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+
+/* ── Chart ── */
+#chart-section { margin-top: 36px; }
+#chart-controls {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px;
+}
+.ctrl-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ctrl-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.chart-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 24px;
+}
+
 /* ── Download button ── */
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .section-header .section-label { margin-bottom: 0; }
@@ -175,6 +225,11 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
   border-radius: 6px; cursor: pointer; transition: all 0.15s;
 }
 .download-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+@media (max-width: 600px) {
+  #summary { grid-template-columns: repeat(2, 1fr); }
+  .pill-value { font-size: 18px; }
+}
 </style>
 </head>
 <body>
@@ -193,15 +248,33 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
     <button class="chip" data-preset="last-month">Last month</button>
     <button class="chip" data-preset="custom">Custom</button>
     <div id="custom-picker">
-      <input type="date" id="from-date" min="2026-01-01">
+      <input type="date" id="from-date" min="2026-04-01">
       <span class="dim" style="font-family:var(--mono)">→</span>
-      <input type="date" id="to-date" min="2026-01-01">
+      <input type="date" id="to-date" min="2026-04-01">
       <button id="apply-btn">Fetch</button>
     </div>
   </section>
 
   <div id="status-bar"></div>
   <div id="sync-bar"></div>
+
+  <!-- Filter bar (shown after first data load) -->
+  <div id="filter-bar">
+    <span class="ctrl-label">Filter</span>
+    <div class="ms-wrap" id="ms-source">
+      <button class="ms-btn">Source ▾</button>
+      <div class="ms-panel"></div>
+    </div>
+    <div class="ms-wrap" id="ms-medium">
+      <button class="ms-btn">Medium ▾</button>
+      <div class="ms-panel"></div>
+    </div>
+    <div class="ms-wrap" id="ms-campaign">
+      <button class="ms-btn">Campaign ▾</button>
+      <div class="ms-panel"></div>
+    </div>
+    <button id="filter-reset" class="filter-reset-btn" style="display:none">✕ Reset filters</button>
+  </div>
 
   <section id="summary">
     <div class="pill" id="pill-orders">
@@ -215,6 +288,10 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
     <div class="pill" id="pill-cancelled">
       <span class="pill-label">Cancellations</span>
       <span class="pill-value" id="val-cancelled">—</span>
+    </div>
+    <div class="pill" id="pill-canc-rev">
+      <span class="pill-label">Cancelled Revenue</span>
+      <span class="pill-value" id="val-canc-rev">—</span>
     </div>
   </section>
 
@@ -234,7 +311,8 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
           <th data-col="orders">Orders</th>
           <th data-col="revenue">Revenue</th>
           <th data-col="cancellations">Cancelled</th>
-          <th>Channel</th>
+          <th data-col="cancelledRevenue">Canc. Rev</th>
+          <th class="no-sort">Channel</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -246,11 +324,17 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
     <div id="chart-controls">
       <div class="ctrl-group">
         <span class="ctrl-label">Metric</span>
-        <button class="chip active" data-metric="orders">Orders</button>
-        <button class="chip" data-metric="revenue">Revenue</button>
-        <button class="chip" data-metric="cancellations">Cancellations</button>
+        <button class="chip metric-chip active" data-metric="orders">Orders</button>
+        <button class="chip metric-chip" data-metric="revenue">Revenue</button>
+        <button class="chip metric-chip" data-metric="cancellations">Cancellations</button>
       </div>
-      <div class="ctrl-group" id="source-filter"></div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Source</span>
+        <div class="ms-wrap" id="ms-chart-source">
+          <button class="ms-btn">All Sources ▾</button>
+          <div class="ms-panel"></div>
+        </div>
+      </div>
     </div>
     <div id="chart-skeleton"></div>
     <div id="chart-box" class="chart-box" style="display:none">
@@ -261,8 +345,7 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
 </div>
 <script src="config.js"></script>
 <script>
-// ─── Source icons (inline SVG) ──────────────────────────────────────────────────
-// ─── Icon/color alias map (normalised keys → canonical) ────────────────────────
+// ─── Icons ─────────────────────────────────────────────────────────────────────
 const ICON_ALIASES = {
   meta: 'facebook', metaads: 'facebook',
   adwords: 'google', googlepmax: 'google', googleads: 'google',
@@ -270,19 +353,18 @@ const ICON_ALIASES = {
   ig: 'instagram',
 };
 
-const _FB_SVG  = `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4" fill="#1877F2"/><path d="M13.5 12h2l.4-2.5H13.5V8.2c0-.7.3-1.1 1.2-1.1H16V5a16 16 0 00-2.2-.2c-2.2 0-3.6 1.3-3.6 3.7V9.5H8v2.5h2.2V19h3.3V12z" fill="#fff"/></svg>`;
-const _IG_SVG  = `<svg class="src-icon" viewBox="0 0 24 24"><defs><linearGradient id="ig-g" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f09433"/><stop offset="50%" stop-color="#dc2743"/><stop offset="100%" stop-color="#bc1888"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-g)"/><circle cx="12" cy="12" r="4.5" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="17.5" cy="6.5" r="1.2" fill="#fff"/></svg>`;
-const _GG_SVG  = `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M20.5 12a8.6 8.6 0 00-.2-2H12v3.8h4.8a4.1 4.1 0 01-1.8 2.7v2.2h2.9C19.6 17 20.5 14.7 20.5 12z" fill="#4285F4"/><path d="M12 21c2.7 0 5-.9 6.7-2.3l-2.9-2.2a5.1 5.1 0 01-3.8 1c-2.9 0-5.4-2-6.3-4.6H2.7v2.3A10 10 0 0012 21z" fill="#34A853"/><path d="M5.7 12.9a5.8 5.8 0 010-3.8V6.8H2.7a10 10 0 000 10.4l3-2.3z" fill="#FBBC05"/><path d="M12 6.1c1.6 0 3 .6 4.1 1.5l2.7-2.7A10 10 0 002.7 6.8l3 2.3C6.6 7.1 9.1 6.1 12 6.1z" fill="#EA4335"/></svg>`;
-const _GLOB_SVG = `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2 3-3 5.5-3 9s1 6 3 9M12 3c2 3 3 5.5 3 9s-1 6-3 9M3 12h18"/></svg>`;
+const _FB  = `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="4" fill="#1877F2"/><path d="M13.5 12h2l.4-2.5H13.5V8.2c0-.7.3-1.1 1.2-1.1H16V5a16 16 0 00-2.2-.2c-2.2 0-3.6 1.3-3.6 3.7V9.5H8v2.5h2.2V19h3.3V12z" fill="#fff"/></svg>`;
+const _IG  = `<svg class="src-icon" viewBox="0 0 24 24"><defs><linearGradient id="ig-g" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#f09433"/><stop offset="50%" stop-color="#dc2743"/><stop offset="100%" stop-color="#bc1888"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-g)"/><circle cx="12" cy="12" r="4.5" stroke="#fff" stroke-width="1.5" fill="none"/><circle cx="17.5" cy="6.5" r="1.2" fill="#fff"/></svg>`;
+const _GG  = `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/><path d="M20.5 12a8.6 8.6 0 00-.2-2H12v3.8h4.8a4.1 4.1 0 01-1.8 2.7v2.2h2.9C19.6 17 20.5 14.7 20.5 12z" fill="#4285F4"/><path d="M12 21c2.7 0 5-.9 6.7-2.3l-2.9-2.2a5.1 5.1 0 01-3.8 1c-2.9 0-5.4-2-6.3-4.6H2.7v2.3A10 10 0 0012 21z" fill="#34A853"/><path d="M5.7 12.9a5.8 5.8 0 010-3.8V6.8H2.7a10 10 0 000 10.4l3-2.3z" fill="#FBBC05"/><path d="M12 6.1c1.6 0 3 .6 4.1 1.5l2.7-2.7A10 10 0 002.7 6.8l3 2.3C6.6 7.1 9.1 6.1 12 6.1z" fill="#EA4335"/></svg>`;
+const _GL  = `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3c-2 3-3 5.5-3 9s1 6 3 9M12 3c2 3 3 5.5 3 9s-1 6-3 9M3 12h18"/></svg>`;
 
 const ICONS = {
-  instagram: _IG_SVG, fb: _FB_SVG, facebook: _FB_SVG,
-  google:    _GG_SVG, cpc: _GG_SVG,
-  youtube:   `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="4" fill="#FF0000"/><polygon points="10,8 10,16 17,12" fill="#fff"/></svg>`,
-  whatsapp:  `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#25D366"/><path d="M17.5 14.5c-.3-.2-1.6-.8-1.9-.9-.3-.1-.5-.1-.7.1s-.8 1-.9 1.2-.3.2-.6 0c-1.7-.8-2.8-1.8-3.5-3.2-.2-.4 0-.5.1-.7l.5-.6c.1-.2.1-.3.2-.5s0-.3 0-.5-.8-2-1.1-2.7c-.3-.7-.6-.6-.9-.6h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.8 1.1 3c.1.1 2 3.1 4.9 4.3 2.9 1.2 2.9.8 3.4.7.5 0 1.6-.7 1.8-1.3.2-.6.2-1.2.2-1.3z" fill="#fff"/></svg>`,
-  email:     `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>`,
-  direct:    _GLOB_SVG,
-  default:   _GLOB_SVG,
+  instagram: _IG, fb: _FB, facebook: _FB,
+  google: _GG, cpc: _GG,
+  youtube:  `<svg class="src-icon" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="4" fill="#FF0000"/><polygon points="10,8 10,16 17,12" fill="#fff"/></svg>`,
+  whatsapp: `<svg class="src-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#25D366"/><path d="M17.5 14.5c-.3-.2-1.6-.8-1.9-.9-.3-.1-.5-.1-.7.1s-.8 1-.9 1.2-.3.2-.6 0c-1.7-.8-2.8-1.8-3.5-3.2-.2-.4 0-.5.1-.7l.5-.6c.1-.2.1-.3.2-.5s0-.3 0-.5-.8-2-1.1-2.7c-.3-.7-.6-.6-.9-.6h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1 2.8 1.1 3c.1.1 2 3.1 4.9 4.3 2.9 1.2 2.9.8 3.4.7.5 0 1.6-.7 1.8-1.3.2-.6.2-1.2.2-1.3z" fill="#fff"/></svg>`,
+  email:    `<svg class="src-icon" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="1.5"><rect x="3" y="5" width="18" height="14" rx="2"/><polyline points="3,7 12,13 21,7"/></svg>`,
+  direct:   _GL, default: _GL,
 };
 
 const COLORS = {
@@ -290,24 +372,27 @@ const COLORS = {
   fb: '#1877F2', facebook: '#1877F2',
   google: '#4285F4', cpc: '#4285F4', adwords: '#4285F4',
   googlepmax: '#4285F4', googleads: '#4285F4', googleppc: '#4285F4', ppc: '#4285F4',
-  youtube: '#FF0000',
-  whatsapp: '#25D366',
-  email: '#9CA3AF',
-  direct: '#6B7280',
+  youtube: '#FF0000', whatsapp: '#25D366', email: '#9CA3AF', direct: '#6B7280',
 };
 
-const MIN_DATE = '2026-01-01';
-function clampFrom(d) { return d < MIN_DATE ? MIN_DATE : d; }
+// Extended palette for unlisted sources (deterministic by hash)
+const PALETTE = [
+  '#4285F4','#EA4335','#FBBC04','#34A853','#FF6D00','#7B61FF',
+  '#00BCD4','#FF4081','#8BC34A','#FF9800','#9C27B0','#00ACC1',
+  '#E91E63','#009688','#FF5722','#607D8B',
+];
 
-// ─── Utilities ─────────────────────────────────────────────────────────────────
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function pad(n)     { return String(n).padStart(2, '0'); }
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+function hashCode(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
 }
+
+const MIN_DATE = '2026-04-01';
+function clampFrom(d) { return d < MIN_DATE ? MIN_DATE : d; }
+function todayStr()   { return new Date().toISOString().slice(0, 10); }
+function pad(n)       { return String(n).padStart(2, '0'); }
+function daysAgo(n)   { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); }
 
 const PRESETS = {
   '7d':         () => ({ from: clampFrom(daysAgo(7)),  to: todayStr() }),
@@ -317,8 +402,7 @@ const PRESETS = {
     return { from: clampFrom(`${d.getFullYear()}-${pad(d.getMonth()+1)}-01`), to: todayStr() };
   },
   'last-month': () => {
-    const d = new Date();
-    d.setDate(1); d.setMonth(d.getMonth() - 1);
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1);
     const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
     return {
       from: clampFrom(`${d.getFullYear()}-${pad(d.getMonth()+1)}-01`),
@@ -327,23 +411,24 @@ const PRESETS = {
   },
 };
 
-function formatINR(n) {
-  return '₹' + Math.round(n).toLocaleString('en-IN');
+function formatINR(n) { return '₹' + Math.round(n).toLocaleString('en-IN'); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function srcKey(s) {
   const k = (s || '').toLowerCase().trim().replace(/[^a-z]/g, '') || 'default';
   return ICON_ALIASES[k] || k;
 }
-function getIcon(s)  { return ICONS[srcKey(s)] || ICONS.default; }
-function getColor(s) { return COLORS[srcKey(s)] || COLORS[ICON_ALIASES[srcKey(s)]] || '#6B7280'; }
-
-function esc(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function getIcon(s)       { return ICONS[srcKey(s)] || ICONS.default; }
+function getNamedColor(s) { return COLORS[srcKey(s)] || null; }
+function getChartColor(s) {
+  const named = getNamedColor(s);
+  if (named) return named;
+  return PALETTE[hashCode(srcKey(s)) % PALETTE.length];
+}
+function metricLabel(m) {
+  return m === 'orders' ? 'Orders' : m === 'revenue' ? 'Revenue' : 'Cancellations';
 }
 
 // ─── localStorage cache ────────────────────────────────────────────────────────
@@ -353,17 +438,159 @@ function cacheGet(from, to) {
   try {
     const raw = localStorage.getItem(`glen-india:${from}:${to}`);
     if (!raw) return null;
-    const { data, fetchedAt } = JSON.parse(raw);
-    const fresh = Date.now() - new Date(fetchedAt).getTime() < CACHE_TTL;
-    return { data, fetchedAt, fresh };
+    const { data, savedAt } = JSON.parse(raw);
+    const fresh = Date.now() - new Date(savedAt).getTime() < CACHE_TTL;
+    return { data, savedAt, fresh };
   } catch { return null; }
 }
 
 function cacheSet(from, to, data) {
   try {
     localStorage.setItem(`glen-india:${from}:${to}`,
-      JSON.stringify({ data, fetchedAt: new Date().toISOString() }));
+      JSON.stringify({ data, savedAt: new Date().toISOString() }));
   } catch (_) {}
+}
+
+// ─── Multi-select dropdown ─────────────────────────────────────────────────────
+class MultiSelect {
+  constructor(wrapEl, label, onChange) {
+    this._label = label;
+    this._onChange = onChange;
+    this._selected = new Set();
+    this._options = [];
+    this._wrap = wrapEl;
+    this._btn = wrapEl.querySelector('.ms-btn');
+    this._panel = wrapEl.querySelector('.ms-panel');
+    this._btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const wasOpen = this._panel.classList.contains('open');
+      // Close all panels first
+      document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
+      if (!wasOpen) this._panel.classList.add('open');
+    });
+  }
+
+  setOptions(opts) {
+    this._options = [...opts];
+    for (const v of [...this._selected]) {
+      if (!this._options.includes(v)) this._selected.delete(v);
+    }
+    this._renderPanel();
+    this._updateBtn();
+  }
+
+  reset() {
+    this._selected.clear();
+    this._renderPanel();
+    this._updateBtn();
+    this._onChange(this._selected);
+  }
+
+  isAll()       { return this._selected.size === 0; }
+  getSelected() { return this._selected; }
+
+  _toggleOpt(val) {
+    if (this._selected.size === 0) {
+      this._options.forEach(o => { if (o !== val) this._selected.add(o); });
+    } else if (this._selected.has(val)) {
+      this._selected.delete(val);
+    } else {
+      this._selected.add(val);
+      if (this._selected.size === this._options.length) this._selected.clear();
+    }
+    this._renderPanel();
+    this._updateBtn();
+    this._onChange(this._selected);
+  }
+
+  _renderPanel() {
+    const allMode = this._selected.size === 0;
+    this._panel.innerHTML = '';
+
+    const allLbl = document.createElement('label');
+    allLbl.className = 'ms-option';
+    const allCb = document.createElement('input');
+    allCb.type = 'checkbox'; allCb.checked = allMode;
+    allCb.addEventListener('change', () => {
+      this._selected.clear(); this._renderPanel(); this._updateBtn(); this._onChange(this._selected);
+    });
+    allLbl.appendChild(allCb);
+    allLbl.appendChild(document.createTextNode(' All'));
+    this._panel.appendChild(allLbl);
+
+    if (this._options.length) {
+      const hr = document.createElement('div');
+      hr.className = 'ms-divider';
+      this._panel.appendChild(hr);
+    }
+
+    this._options.forEach(opt => {
+      const lbl = document.createElement('label');
+      lbl.className = 'ms-option';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = allMode || this._selected.has(opt);
+      cb.addEventListener('change', () => this._toggleOpt(opt));
+      lbl.appendChild(cb);
+      lbl.appendChild(document.createTextNode(' ' + opt));
+      this._panel.appendChild(lbl);
+    });
+  }
+
+  _updateBtn() {
+    const n = this._selected.size;
+    if (n > 0) {
+      this._btn.innerHTML = `${this._label} <span class="ms-count">${n}</span> ▾`;
+      this._btn.classList.add('has-filter');
+    } else {
+      this._btn.innerHTML = `${this._label} ▾`;
+      this._btn.classList.remove('has-filter');
+    }
+  }
+}
+
+// Close all dropdowns when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
+});
+
+// ─── Filter state ──────────────────────────────────────────────────────────────
+let msSource, msMedium, msCampaign, msChartSource;
+
+function initFilters() {
+  msSource      = new MultiSelect(document.getElementById('ms-source'),      'Source',      updateTableFilters);
+  msMedium      = new MultiSelect(document.getElementById('ms-medium'),      'Medium',      updateTableFilters);
+  msCampaign    = new MultiSelect(document.getElementById('ms-campaign'),    'Campaign',    updateTableFilters);
+  msChartSource = new MultiSelect(document.getElementById('ms-chart-source'),'All Sources', () => {
+    if (lastData) renderChart(lastData.timeseries);
+  });
+}
+
+function populateFilters(data) {
+  const uniq = arr => [...new Set(arr)].sort();
+  msSource.setOptions(uniq(data.rows.map(r => r.utm_source)));
+  msMedium.setOptions(uniq(data.rows.map(r => r.utm_medium)));
+  msCampaign.setOptions(uniq(data.rows.map(r => r.utm_campaign)));
+  msChartSource.setOptions(uniq(data.timeseries.map(r => r.utm_source)));
+  document.getElementById('filter-bar').style.display = 'flex';
+}
+
+function getFilteredRows() {
+  if (!lastData) return [];
+  return lastData.rows.filter(r =>
+    (msSource.isAll()   || msSource.getSelected().has(r.utm_source))   &&
+    (msMedium.isAll()   || msMedium.getSelected().has(r.utm_medium))   &&
+    (msCampaign.isAll() || msCampaign.getSelected().has(r.utm_campaign))
+  );
+}
+
+function updateTableFilters() {
+  if (!lastData) return;
+  const rows = getFilteredRows();
+  renderSummary(rows);
+  renderTable(rows);
+  const hasFilter = !msSource.isAll() || !msMedium.isAll() || !msCampaign.isAll();
+  document.getElementById('filter-reset').style.display = hasFilter ? 'inline-block' : 'none';
 }
 
 // ─── Status bar ────────────────────────────────────────────────────────────────
@@ -373,43 +600,34 @@ function clearStatus()   { setStatus(''); }
 function showLoading() {
   setStatus(`<div class="status-msg loading"><span class="spinner">⟳</span>&nbsp;Fetching Magic orders from Shopify…</div>`);
 }
-
 function showError(msg, from, to) {
   setStatus(`<div class="status-msg error">
     <span>⚠ ${esc(msg)}</span>
     <button class="retry-btn" data-retry-from="${esc(from)}" data-retry-to="${esc(to)}">Retry</button>
   </div>`);
 }
-
-function showWarning(msg) {
-  setStatus(`<div class="status-msg warning">⚠ ${msg}</div>`);
-}
-
-function showCachedMsg(ts, stale = false) {
-  const when = new Date(ts).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+function showWarning(msg) { setStatus(`<div class="status-msg warning">⚠ ${msg}</div>`); }
+function showCachedMsg(savedAt, stale = false) {
+  const when = new Date(savedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
   const txt = stale
     ? `⟳ Stale cache from ${when} — refreshing in background…`
-    : `✓ Loaded from cache · fetched ${when}`;
+    : `✓ Loaded from cache · saved ${when}`;
   setStatus(`<div class="status-msg cached">${txt}</div>`);
 }
 
 // ─── Skeletons ─────────────────────────────────────────────────────────────────
 function showTableSkeleton() {
-  document.getElementById('table-skeleton').innerHTML =
-    Array(5).fill('<div class="sk-row"></div>').join('');
+  document.getElementById('table-skeleton').innerHTML = Array(5).fill('<div class="sk-row"></div>').join('');
   document.getElementById('table-outer').style.display = 'none';
 }
-
 function hideTableSkeleton() {
   document.getElementById('table-skeleton').innerHTML = '';
   document.getElementById('table-outer').style.display = 'block';
 }
-
 function showChartSkeleton() {
   document.getElementById('chart-skeleton').innerHTML = '<div class="sk-chart"></div>';
   document.getElementById('chart-box').style.display = 'none';
 }
-
 function hideChartSkeleton() {
   document.getElementById('chart-skeleton').innerHTML = '';
   document.getElementById('chart-box').style.display = 'block';
@@ -417,16 +635,21 @@ function hideChartSkeleton() {
 
 // ─── Render ────────────────────────────────────────────────────────────────────
 function renderSummary(rows) {
-  const orders  = rows.reduce((s, r) => s + r.orders,        0);
-  const rev     = rows.reduce((s, r) => s + r.revenue,       0);
-  const canc    = rows.reduce((s, r) => s + r.cancellations, 0);
-  document.getElementById('val-orders').textContent    = orders.toLocaleString('en-IN');
-  document.getElementById('val-revenue').textContent   = formatINR(rev);
-  document.getElementById('val-cancelled').textContent = canc.toLocaleString('en-IN');
+  const orders   = rows.reduce((s, r) => s + r.orders, 0);
+  const rev      = rows.reduce((s, r) => s + r.revenue, 0);
+  const canc     = rows.reduce((s, r) => s + r.cancellations, 0);
+  const cancRev  = rows.reduce((s, r) => s + (r.cancelledRevenue || 0), 0);
+  document.getElementById('val-orders').textContent   = orders.toLocaleString('en-IN');
+  document.getElementById('val-revenue').textContent  = formatINR(rev);
+  document.getElementById('val-cancelled').textContent= canc.toLocaleString('en-IN');
+  document.getElementById('val-canc-rev').textContent = formatINR(cancRev);
 }
 
 let sortCol = 'orders', sortDir = -1;
-let lastData = null;
+const COL_LABELS = {
+  utm_source: 'Source', utm_medium: 'Medium', utm_campaign: 'Campaign',
+  orders: 'Orders', revenue: 'Revenue', cancellations: 'Cancelled', cancelledRevenue: 'Canc. Rev',
+};
 
 function renderTable(rows) {
   hideTableSkeleton();
@@ -434,11 +657,7 @@ function renderTable(rows) {
   if (dlBtn) dlBtn.style.display = rows.length ? 'inline-block' : 'none';
   const empty = document.getElementById('empty-msg');
   const table = document.getElementById('utm-table');
-  if (!rows.length) {
-    empty.style.display = 'block';
-    table.style.display = 'none';
-    return;
-  }
+  if (!rows.length) { empty.style.display = 'block'; table.style.display = 'none'; return; }
   empty.style.display = 'none';
   table.style.display = 'table';
 
@@ -447,14 +666,10 @@ function renderTable(rows) {
     return sortDir * (av < bv ? -1 : av > bv ? 1 : 0);
   });
 
-  // Update header indicators
   document.querySelectorAll('#utm-table thead th[data-col]').forEach(th => {
-    th.classList.remove('sort-active');
-    th.textContent = th.textContent.replace(/ [↑↓]$/, '');
-    if (th.dataset.col === sortCol) {
-      th.classList.add('sort-active');
-      th.textContent += sortDir === -1 ? ' ↓' : ' ↑';
-    }
+    const base = COL_LABELS[th.dataset.col] || th.dataset.col;
+    th.classList.toggle('sort-active', th.dataset.col === sortCol);
+    th.textContent = base + (th.dataset.col === sortCol ? (sortDir === -1 ? ' ↓' : ' ↑') : '');
   });
 
   document.getElementById('table-body').innerHTML = sorted.map(r => `
@@ -465,49 +680,107 @@ function renderTable(rows) {
       <td><strong>${r.orders.toLocaleString('en-IN')}</strong></td>
       <td class="rev">${formatINR(r.revenue)}</td>
       <td class="can${r.cancellations > 0 ? ' has' : ''}">${r.cancellations}</td>
+      <td class="canrev${(r.cancelledRevenue||0) > 0 ? ' has' : ''}">${formatINR(r.cancelledRevenue || 0)}</td>
       <td><span class="ch-badge">Magic</span></td>
     </tr>
   `).join('');
 }
 
+// ─── Chart ────────────────────────────────────────────────────────────────────
 let chart = null;
-let currentMetric = 'orders';
-let activeSource  = '__all__';
+const activeMetrics = new Set(['orders']);
+const MAX_CHART_SERIES = 8;
 
 function renderChart(timeseries) {
   hideChartSkeleton();
   if (!timeseries.length) return;
 
   const dates   = [...new Set(timeseries.map(r => r.date))].sort();
-  const sources = [...new Set(timeseries.map(r => r.utm_source))];
+  const allSrcs = [...new Set(timeseries.map(r => r.utm_source))];
 
-  // Rebuild source filter chips
-  const sfEl = document.getElementById('source-filter');
-  sfEl.innerHTML = '<span class="ctrl-label">Source</span>';
-  [{ key: '__all__', label: 'All' }, ...sources.map(s => ({ key: s, label: s }))].forEach(({ key, label }) => {
-    const btn = document.createElement('button');
-    btn.className = 'chip' + (activeSource === key ? ' active' : '');
-    btn.textContent = label;
-    btn.addEventListener('click', () => {
-      activeSource = key;
-      renderChart(timeseries);
+  // Sync chart source dropdown options
+  msChartSource.setOptions(allSrcs);
+
+  const selectedSrcs = msChartSource.isAll()
+    ? allSrcs
+    : [...msChartSource.getSelected()].filter(s => allSrcs.includes(s));
+
+  // Top N + Other
+  let mainSrcs = selectedSrcs, otherSrcs = [];
+  if (selectedSrcs.length > MAX_CHART_SERIES) {
+    const totals = {};
+    timeseries.forEach(r => {
+      if (selectedSrcs.includes(r.utm_source))
+        totals[r.utm_source] = (totals[r.utm_source] || 0) + r.orders;
     });
-    sfEl.appendChild(btn);
+    const ranked = [...selectedSrcs].sort((a, b) => (totals[b]||0) - (totals[a]||0));
+    mainSrcs  = ranked.slice(0, MAX_CHART_SERIES);
+    otherSrcs = ranked.slice(MAX_CHART_SERIES);
+  }
+
+  const metrics = [...activeMetrics];
+  const hasRevenue = metrics.includes('revenue');
+  const multiMetric = metrics.length > 1;
+
+  const datasets = [];
+
+  mainSrcs.forEach(src => {
+    const color = getChartColor(src);
+    metrics.forEach(metric => {
+      const isRevMetric = metric === 'revenue';
+      datasets.push({
+        label: multiMetric
+          ? `${src} (${metricLabel(metric)})`
+          : mainSrcs.length === 1 ? metricLabel(metric) : src,
+        data: dates.map(d => {
+          const e = timeseries.find(r => r.date === d && r.utm_source === src);
+          return e ? (e[metric] || 0) : 0;
+        }),
+        borderColor: color,
+        backgroundColor: color + '22',
+        tension: 0.3, pointRadius: 3, pointHoverRadius: 5,
+        yAxisID: (multiMetric && isRevMetric) ? 'y1' : 'y',
+        borderDash: (multiMetric && isRevMetric) ? [5, 3] : [],
+      });
+    });
   });
 
-  const activeSrcs = activeSource === '__all__' ? sources : [activeSource];
-  const datasets = activeSrcs.map(src => ({
-    label: src,
-    data: dates.map(d => {
-      const e = timeseries.find(r => r.date === d && r.utm_source === src);
-      return e ? e[currentMetric] : 0;
-    }),
-    borderColor: getColor(src),
-    backgroundColor: getColor(src) + '22',
-    tension: 0.3,
-    pointRadius: 3,
-    pointHoverRadius: 5,
-  }));
+  if (otherSrcs.length) {
+    metrics.forEach(metric => {
+      const isRevMetric = metric === 'revenue';
+      datasets.push({
+        label: `Other (${otherSrcs.length})${multiMetric ? ' ' + metricLabel(metric) : ''}`,
+        data: dates.map(d => otherSrcs.reduce((sum, src) => {
+          const e = timeseries.find(r => r.date === d && r.utm_source === src);
+          return sum + (e ? (e[metric] || 0) : 0);
+        }, 0)),
+        borderColor: '#6B7280', backgroundColor: '#6B728022',
+        tension: 0.3, pointRadius: 2, borderDash: [4, 2],
+        yAxisID: (multiMetric && isRevMetric) ? 'y1' : 'y',
+      });
+    });
+  }
+
+  const isSoloRevenue = metrics.length === 1 && metrics[0] === 'revenue';
+  const scales = {
+    x: {
+      grid: { color: '#1C1F2E' },
+      ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, maxRotation: 45 },
+    },
+    y: {
+      grid: { color: '#1C1F2E' },
+      ticks: {
+        color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 },
+        callback: v => isSoloRevenue ? formatINR(v) : v,
+      },
+    },
+  };
+  if (multiMetric && hasRevenue) {
+    scales.y1 = {
+      position: 'right', grid: { drawOnChartArea: false },
+      ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, callback: v => formatINR(v) },
+    };
+  }
 
   if (chart) chart.destroy();
   chart = new Chart(document.getElementById('trend-chart').getContext('2d'), {
@@ -519,7 +792,11 @@ function renderChart(timeseries) {
       plugins: {
         legend: {
           display: datasets.length > 1,
-          labels: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 } },
+          position: 'bottom',
+          labels: {
+            color: '#6B7280', font: { family: 'IBM Plex Mono', size: 10 },
+            boxWidth: 12, padding: 12, usePointStyle: true,
+          },
         },
         tooltip: {
           backgroundColor: '#0E1016', borderColor: '#252840', borderWidth: 1,
@@ -528,46 +805,38 @@ function renderChart(timeseries) {
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
-              return ` ${ctx.dataset.label}: ${currentMetric === 'revenue' ? formatINR(v) : v}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: '#1C1F2E' },
-          ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, maxRotation: 45 },
-        },
-        y: {
-          grid: { color: '#1C1F2E' },
-          ticks: {
-            color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 },
-            callback: v => currentMetric === 'revenue' ? formatINR(v) : v,
+              const isRev = ctx.dataset.yAxisID === 'y1' || isSoloRevenue;
+              return ` ${ctx.dataset.label}: ${isRev ? formatINR(v) : v}`;
+            },
           },
         },
       },
+      scales,
     },
   });
 }
 
 function renderAll(data) {
-  renderSummary(data.rows);
-  renderTable(data.rows);
+  populateFilters(data);
+  const rows = getFilteredRows();
+  renderSummary(rows);
+  renderTable(rows);
   renderChart(data.timeseries);
 }
 
 // ─── Fetch + cache orchestration ───────────────────────────────────────────────
 let pendingFrom = null, pendingTo = null;
 let currentFrom = null, currentTo = null;
+let lastData    = null;
 
 function setSyncBar(data, from, to) {
   const bar = document.getElementById('sync-bar');
-  if (!data || !data.fetchedAt) { bar.innerHTML = ''; return; }
+  if (!data?.fetchedAt) { bar.innerHTML = ''; return; }
   const when = new Date(data.fetchedAt).toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short',
   });
   const canRefetch = to >= todayStr();
-  bar.innerHTML = `<span class="sync-chip"><span class="sync-dot">●</span>Synced ${when}</span>`
+  bar.innerHTML = `<span class="sync-chip"><span class="sync-dot">●</span>Data as of ${when}</span>`
     + (canRefetch ? `<button class="refetch-btn" id="refetch-btn">↺ Refresh</button>` : '');
   if (canRefetch) {
     document.getElementById('refetch-btn').addEventListener('click', () => triggerRefetch(from, to));
@@ -579,26 +848,20 @@ function triggerRefetch(from, to) {
   pendingFrom = from; pendingTo = to;
   clearStatus();
   document.getElementById('sync-bar').innerHTML = '';
-  showLoading();
-  showTableSkeleton();
-  showChartSkeleton();
+  showLoading(); showTableSkeleton(); showChartSkeleton();
   fetch(`${CONFIG.WORKER_URL}?from=${from}&to=${to}&refresh=1`)
     .then(r => { if (!r.ok) throw new Error(`Worker returned ${r.status}`); return r.json(); })
     .then(data => {
       if (data.error) throw new Error(data.error);
       cacheSet(from, to, data);
       if (pendingFrom === from && pendingTo === to) {
-        currentFrom = from; currentTo = to;
-        lastData = data;
-        if (data.incomplete) showWarning('Large date range — data may be incomplete. Try a shorter period.');
+        lastData = data; currentFrom = from; currentTo = to;
+        if (data.incomplete) showWarning('Large date range — data may be incomplete.');
         else clearStatus();
-        renderAll(data);
-        setSyncBar(data, from, to);
+        renderAll(data); setSyncBar(data, from, to);
       }
     })
-    .catch(err => {
-      if (pendingFrom === from && pendingTo === to) showError(err.message, from, to);
-    });
+    .catch(err => { if (pendingFrom === from && pendingTo === to) showError(err.message, from, to); });
 }
 
 async function loadRange(from, to) {
@@ -611,25 +874,18 @@ async function loadRange(from, to) {
 
   const cached = cacheGet(from, to);
 
-  if (cached && cached.fresh) {
-    lastData = cached.data;
-    clearStatus();
-    renderAll(cached.data);
-    currentFrom = from; currentTo = to;
-    setSyncBar(lastData, from, to);
+  if (cached?.fresh) {
+    lastData = cached.data; currentFrom = from; currentTo = to;
+    clearStatus(); renderAll(cached.data); setSyncBar(lastData, from, to);
     return;
   }
 
   if (cached) {
-    lastData = cached.data;
-    currentFrom = from; currentTo = to;
-    renderAll(cached.data);
-    setSyncBar(lastData, from, to);
-    showCachedMsg(cached.fetchedAt, true);
+    lastData = cached.data; currentFrom = from; currentTo = to;
+    renderAll(cached.data); setSyncBar(lastData, from, to);
+    showCachedMsg(cached.savedAt, true);
   } else {
-    showLoading();
-    showTableSkeleton();
-    showChartSkeleton();
+    showLoading(); showTableSkeleton(); showChartSkeleton();
   }
 
   try {
@@ -637,17 +893,12 @@ async function loadRange(from, to) {
     if (!resp.ok) throw new Error(`Worker returned ${resp.status}`);
     const data = await resp.json();
     if (data.error) throw new Error(data.error);
-
     cacheSet(from, to, data);
-
-    // Only render if this is still the pending range
     if (pendingFrom === from && pendingTo === to) {
-      lastData = data;
-      currentFrom = from; currentTo = to;
-      if (data.incomplete) showWarning('Large date range — data may be incomplete. Try a shorter period.');
+      lastData = data; currentFrom = from; currentTo = to;
+      if (data.incomplete) showWarning('Large date range — data may be incomplete.');
       else clearStatus();
-      renderAll(data);
-      setSyncBar(data, from, to);
+      renderAll(data); setSyncBar(data, from, to);
     }
   } catch (err) {
     if (pendingFrom === from && pendingTo === to) {
@@ -659,8 +910,9 @@ async function loadRange(from, to) {
 
 // ─── CSV download ──────────────────────────────────────────────────────────────
 function downloadCSV() {
-  if (!lastData || !lastData.rows.length) return;
-  const rows = lastData.rows;
+  if (!lastData?.rows.length) return;
+  const rows = getFilteredRows();
+  if (!rows.length) { showWarning('No rows match current filters.'); return; }
   if (rows.length > 1000) {
     showWarning(`Large export (${rows.length} rows) — preparing download…`);
     setTimeout(() => { doDownload(rows); clearStatus(); }, 100);
@@ -670,10 +922,11 @@ function downloadCSV() {
 }
 
 function doDownload(rows) {
-  const header = 'Source,Medium,Campaign,Orders,Revenue,Cancellations,Channel';
+  const header = 'Source,Medium,Campaign,Orders,Revenue,Cancellations,CancelledRevenue,Channel';
   const lines = rows.map(r =>
-    [r.utm_source, r.utm_medium, r.utm_campaign, r.orders, r.revenue.toFixed(2), r.cancellations, r.channel]
-      .map(v => `"${String(v).replace(/"/g, '""')}"`)
+    [r.utm_source, r.utm_medium, r.utm_campaign, r.orders, r.revenue.toFixed(2),
+     r.cancellations, (r.cancelledRevenue || 0).toFixed(2), r.channel]
+      .map(v => `"${String(v).replace(/"/g,'""')}"`)
       .join(',')
   );
   const csv = [header, ...lines].join('\n');
@@ -681,8 +934,7 @@ function doDownload(rows) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `glen-india-utm-${currentFrom || 'export'}_${currentTo || ''}.csv`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  a.click(); URL.revokeObjectURL(a.href);
 }
 
 // ─── Event wiring ──────────────────────────────────────────────────────────────
@@ -690,11 +942,10 @@ document.querySelectorAll('.chip[data-preset]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.chip[data-preset]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    const picker = document.getElementById('custom-picker');
     if (btn.dataset.preset === 'custom') {
-      picker.classList.add('visible');
+      document.getElementById('custom-picker').classList.add('visible');
     } else {
-      picker.classList.remove('visible');
+      document.getElementById('custom-picker').classList.remove('visible');
       const { from, to } = PRESETS[btn.dataset.preset]();
       loadRange(from, to);
     }
@@ -709,16 +960,23 @@ document.getElementById('status-bar').addEventListener('click', e => {
 document.getElementById('apply-btn').addEventListener('click', () => {
   const from = document.getElementById('from-date').value;
   const to   = document.getElementById('to-date').value;
-  if (!from || !to)  { showWarning('Please select both dates.'); return; }
-  if (from > to)     { showWarning('Start date must be before end date.'); return; }
+  if (!from || !to) { showWarning('Please select both dates.'); return; }
+  if (from > to)    { showWarning('Start date must be before end date.'); return; }
+  if (from < MIN_DATE) { showWarning(`Data is only available from ${MIN_DATE}.`); return; }
   loadRange(from, to);
 });
 
-document.querySelectorAll('.chip[data-metric]').forEach(btn => {
+document.querySelectorAll('.metric-chip').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.chip[data-metric]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentMetric = btn.dataset.metric;
+    const m = btn.dataset.metric;
+    if (activeMetrics.has(m)) {
+      if (activeMetrics.size === 1) return; // keep at least one
+      activeMetrics.delete(m);
+      btn.classList.remove('active');
+    } else {
+      activeMetrics.add(m);
+      btn.classList.add('active');
+    }
     if (lastData) renderChart(lastData.timeseries);
   });
 });
@@ -727,13 +985,20 @@ document.querySelectorAll('#utm-table thead th[data-col]').forEach(th => {
   th.addEventListener('click', () => {
     sortDir = sortCol === th.dataset.col ? sortDir * -1 : -1;
     sortCol = th.dataset.col;
-    if (lastData) renderTable(lastData.rows);
+    if (lastData) renderTable(getFilteredRows());
   });
+});
+
+document.getElementById('filter-reset').addEventListener('click', () => {
+  msSource.reset(); msMedium.reset(); msCampaign.reset();
+  document.getElementById('filter-reset').style.display = 'none';
+  if (lastData) { renderSummary(getFilteredRows()); renderTable(getFilteredRows()); }
 });
 
 document.getElementById('download-btn').addEventListener('click', downloadCSV);
 
-// ─── Boot: default to Last 30d ─────────────────────────────────────────────────
+// ─── Init ──────────────────────────────────────────────────────────────────────
+initFilters();
 document.querySelector('.chip[data-preset="30d"]').click();
 </script>
 </body>

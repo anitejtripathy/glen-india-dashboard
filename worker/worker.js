@@ -2,53 +2,72 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
 
-    // CORS preflight
     if (request.method === 'OPTIONS') {
       if (origin !== env.ALLOWED_ORIGIN) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
+    if (origin !== env.ALLOWED_ORIGIN) return new Response('Forbidden', { status: 403 });
 
-    // Origin guard — only respond to the configured GitHub Pages URL
-    if (origin !== env.ALLOWED_ORIGIN) {
-      return new Response('Forbidden', { status: 403 });
-    }
+    const url     = new URL(request.url);
+    const from    = url.searchParams.get('from') || '';
+    const to      = url.searchParams.get('to')   || '';
+    const refresh = url.searchParams.get('refresh') === '1';
 
-    const url  = new URL(request.url);
-    const from = url.searchParams.get('from') || '';
-    const to   = url.searchParams.get('to')   || '';
-
-    if (!isDate(from) || !isDate(to)) {
+    if (!isDate(from) || !isDate(to))
       return jsonResp({ error: 'from and to must be YYYY-MM-DD' }, 400, origin);
-    }
-    if (from > to) {
+    if (from > to)
       return jsonResp({ error: 'from must be before or equal to to' }, 400, origin);
-    }
-    if (from < '2026-01-01') {
-      return jsonResp({ error: 'Data is only available from 2026-01-01' }, 400, origin);
+    if (from < '2026-04-01')
+      return jsonResp({ error: 'Data is only available from 2026-04-01' }, 400, origin);
+
+    const curMonthStart = firstOfMonth(todayStr());
+    const chunks = monthChunks(from, to);
+    const chunkResults = [];
+
+    for (const chunk of chunks) {
+      const isCurrentMonth = chunk.to >= curMonthStart;
+      const chunkKey = `glen-india:chunk:${chunk.from}:${chunk.to}`;
+
+      // Historical chunks: always serve from cache
+      // Current month: re-fetch only when refresh=1
+      const skipCache = refresh && isCurrentMonth;
+
+      if (!skipCache) {
+        const cached = await env.GLEN_INDIA_CACHE.get(chunkKey);
+        if (cached) {
+          try { chunkResults.push({ ...JSON.parse(cached), _cached: true }); continue; } catch (_) {}
+        }
+      }
+
+      // Read existing cached value BEFORE fetching so we can compare order counts
+      let prevResult = null;
+      if (skipCache) {
+        const prev = await env.GLEN_INDIA_CACHE.get(chunkKey);
+        if (prev) { try { prevResult = JSON.parse(prev); } catch (_) {} }
+      }
+
+      let orders;
+      try {
+        orders = await fetchAllOrders(chunk.from, chunk.to, env.SHOPIFY_ADMIN_TOKEN);
+      } catch (err) {
+        return jsonResp({ error: err.message, incomplete: true }, 502, origin);
+      }
+
+      const chunkResult = { ...processOrders(orders), fetchedAt: new Date().toISOString() };
+
+      // Keep old fetchedAt if order count unchanged (timestamp = when data last changed)
+      if (prevResult) {
+        const oldTotal = prevResult.rows?.reduce((s, r) => s + r.orders, 0) || 0;
+        const newTotal = chunkResult.rows.reduce((s, r) => s + r.orders, 0);
+        if (oldTotal === newTotal) chunkResult.fetchedAt = prevResult.fetchedAt;
+      }
+
+      const ttl = isCurrentMonth ? 3600 : 7 * 86400;
+      await env.GLEN_INDIA_CACHE.put(chunkKey, JSON.stringify(chunkResult), { expirationTtl: ttl });
+      chunkResults.push(chunkResult);
     }
 
-    // KV cache check
-    const refresh  = url.searchParams.get('refresh') === '1';
-    const cacheKey = `glen-india:${from}:${to}`;
-    if (!refresh) {
-      const cached = await env.GLEN_INDIA_CACHE.get(cacheKey);
-      if (cached) return jsonResp(cached, 200, origin, true);
-    }
-
-    // Fetch from Shopify
-    let orders;
-    try {
-      orders = await fetchAllOrders(from, to, env.SHOPIFY_ADMIN_TOKEN);
-    } catch (err) {
-      return jsonResp({ error: err.message, incomplete: true }, 502, origin);
-    }
-
-    const result = { ...processOrders(orders), fetchedAt: new Date().toISOString() };
-    // Historical ranges cache for 24h; ranges including today cache for 1h
-    const ttl = to >= todayStr() ? 3600 : 86400;
-    await env.GLEN_INDIA_CACHE.put(cacheKey, JSON.stringify(result), { expirationTtl: ttl });
-
-    return jsonResp(result, 200, origin);
+    return jsonResp(mergeChunkResults(chunkResults), 200, origin);
   },
 };
 
@@ -79,7 +98,66 @@ function todayStr() {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 }
 
+function firstOfMonth(dateStr) {
+  return dateStr.slice(0, 8) + '01';
+}
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ─── Month-chunk helpers ───────────────────────────────────────────────────────
+
+function monthChunks(from, to) {
+  const chunks = [];
+  let [y, m] = from.split('-').map(Number);
+  let curFrom = from;
+  while (curFrom <= to) {
+    const lastDay = new Date(y, m, 0).getDate();
+    const monthEnd = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+    const chunkTo = monthEnd < to ? monthEnd : to;
+    chunks.push({ from: curFrom, to: chunkTo });
+    m++;
+    if (m > 12) { m = 1; y++; }
+    curFrom = `${y}-${String(m).padStart(2,'0')}-01`;
+  }
+  return chunks;
+}
+
+function mergeChunkResults(results) {
+  const tableMap = {}, tsMap = {};
+  let fetchedAt = null;
+
+  for (const result of results) {
+    if (!fetchedAt || result.fetchedAt > fetchedAt) fetchedAt = result.fetchedAt;
+
+    for (const row of (result.rows || [])) {
+      const tk = `${row.utm_source}|${row.utm_medium}|${row.utm_campaign}`;
+      if (!tableMap[tk]) {
+        tableMap[tk] = { utm_source: row.utm_source, utm_medium: row.utm_medium,
+          utm_campaign: row.utm_campaign, orders: 0, revenue: 0,
+          cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
+      }
+      tableMap[tk].orders          += row.orders;
+      tableMap[tk].revenue         += row.revenue;
+      tableMap[tk].cancellations   += row.cancellations;
+      tableMap[tk].cancelledRevenue += (row.cancelledRevenue || 0);
+    }
+
+    for (const pt of (result.timeseries || [])) {
+      const sk = `${pt.date}|${pt.utm_source}`;
+      if (!tsMap[sk]) tsMap[sk] = { date: pt.date, utm_source: pt.utm_source, orders: 0, revenue: 0, cancellations: 0 };
+      tsMap[sk].orders        += pt.orders;
+      tsMap[sk].revenue       += pt.revenue;
+      tsMap[sk].cancellations += pt.cancellations;
+    }
+  }
+
+  return {
+    rows:       Object.values(tableMap).sort((a, b) => b.orders - a.orders),
+    timeseries: Object.values(tsMap).sort((a, b) => a.date < b.date ? -1 : 1),
+    fetchedAt:  fetchedAt || new Date().toISOString(),
+    incomplete: false,
+  };
+}
 
 // ─── Shopify pagination ────────────────────────────────────────────────────────
 
@@ -92,20 +170,14 @@ async function fetchAllOrders(from, to, token) {
     + `&status=any&limit=250&fields=${fields}`;
 
   const all = [];
-
   while (nextUrl) {
     const resp = await fetchWithBackoff(nextUrl, token);
     const data = await resp.json();
     all.push(...(data.orders || []));
-
-    // Throttle when near the 40-call bucket limit
     const limitHdr = resp.headers.get('X-Shopify-Shop-Api-Call-Limit') || '';
-    const used     = parseInt(limitHdr.split('/')[0], 10);
-    if (used >= 35) await sleep(500);
-
+    if (parseInt(limitHdr.split('/')[0], 10) >= 35) await sleep(500);
     nextUrl = parseNextLink(resp.headers.get('Link'));
   }
-
   return all;
 }
 
@@ -113,13 +185,10 @@ async function fetchWithBackoff(url, token, retries = 3) {
   for (let i = 0; i < retries; i++) {
     const resp = await fetch(url, { headers: { 'X-Shopify-Access-Token': token } });
     if (resp.status !== 429) {
-      if (!resp.ok) {
-        await resp.body?.cancel();
-        throw new Error(`Shopify API returned ${resp.status}`);
-      }
+      if (!resp.ok) { await resp.body?.cancel(); throw new Error(`Shopify API returned ${resp.status}`); }
       return resp;
     }
-    await sleep(1000 * Math.pow(2, i)); // 1s, 2s, 4s
+    await sleep(1000 * Math.pow(2, i));
   }
   throw new Error('Shopify rate limit exceeded — try again in a few seconds');
 }
@@ -133,37 +202,27 @@ function parseNextLink(header) {
 // ─── UTM extraction ────────────────────────────────────────────────────────────
 
 function extractUTM(noteAttributes) {
-  // Build a flat key→value map from note_attributes array
   const a = Object.fromEntries(
     (noteAttributes || [])
       .filter(attr => attr != null && attr.name != null)
       .map(({ name, value }) => [name, value])
   );
+  let source = a['utm_source'], medium = a['utm_medium'], campaign = a['utm_campaign'];
 
-  let source   = a['utm_source'];
-  let medium   = a['utm_medium'];
-  let campaign = a['utm_campaign'];
-
-  // Fallback 1: codk_campaign_attribution JSON blob
   if ((!source || !medium || !campaign) && a['codk_campaign_attribution']) {
     try {
       const codk = JSON.parse(a['codk_campaign_attribution']);
-      source   = source   || codk.utm_source;
-      medium   = medium   || codk.utm_medium;
-      campaign = campaign || codk.utm_campaign;
+      source = source || codk.utm_source; medium = medium || codk.utm_medium; campaign = campaign || codk.utm_campaign;
     } catch (_) {}
   }
-
-  // Fallback 2: _eventSourceUrl query params
   if ((!source || !medium || !campaign) && a['_eventSourceUrl']) {
     try {
       const u = new URL(a['_eventSourceUrl']);
-      source   = source   || u.searchParams.get('utm_source');
-      medium   = medium   || u.searchParams.get('utm_medium');
+      source = source || u.searchParams.get('utm_source');
+      medium = medium || u.searchParams.get('utm_medium');
       campaign = campaign || u.searchParams.get('utm_campaign');
     } catch (_) {}
   }
-
   return {
     utm_source:   (source?.trim()   || '(direct)').toLowerCase(),
     utm_medium:   (medium?.trim()   || '(none)').toLowerCase(),
@@ -174,45 +233,45 @@ function extractUTM(noteAttributes) {
 // ─── Order processing ──────────────────────────────────────────────────────────
 
 function processOrders(orders) {
-  const tableMap = {};
-  const tsMap    = {};
+  const seen = new Set();
+  const tableMap = {}, tsMap = {};
 
   for (const order of orders) {
-    // Re-validate Magic tag (API pre-filters, but guard against edge cases)
+    // Deduplicate by order ID (safety net against API pagination edge cases)
+    if (order.id != null) {
+      if (seen.has(String(order.id))) continue;
+      seen.add(String(order.id));
+    }
+
     const tags = (order.tags || '').split(',').map(t => t.trim().toLowerCase());
     if (!tags.includes('magic')) continue;
 
     const { utm_source, utm_medium, utm_campaign } = extractUTM(order.note_attributes);
-    const revenueP  = Math.round(parseFloat(order.current_total_price || '0') * 100);
-    const cancelled = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
+    const revenueP         = Math.round(parseFloat(order.current_total_price || '0') * 100);
+    const cancelled        = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
+    const cancelledRevenueP = cancelled ? revenueP : 0;
     const date = order.created_at
       ? new Date(order.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
       : '';
     if (!date) continue;
 
-    // Table aggregation: group by source + medium + campaign
     const tk = `${utm_source}|${utm_medium}|${utm_campaign}`;
-    if (!tableMap[tk]) {
-      tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, channel: 'Magic' };
-    }
-    tableMap[tk].orders        += 1;
-    tableMap[tk].revenue       += revenueP;
-    tableMap[tk].cancellations += cancelled;
+    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
+    tableMap[tk].orders          += 1;
+    tableMap[tk].revenue         += revenueP;
+    tableMap[tk].cancellations   += cancelled;
+    tableMap[tk].cancelledRevenue += cancelledRevenueP;
 
-    // Timeseries aggregation: group by date + source
     const sk = `${date}|${utm_source}`;
-    if (!tsMap[sk]) {
-      tsMap[sk] = { date, utm_source, orders: 0, revenue: 0, cancellations: 0 };
-    }
+    if (!tsMap[sk]) tsMap[sk] = { date, utm_source, orders: 0, revenue: 0, cancellations: 0 };
     tsMap[sk].orders        += 1;
     tsMap[sk].revenue       += revenueP;
     tsMap[sk].cancellations += cancelled;
   }
 
   const rows = Object.values(tableMap)
-    .map(r => ({ ...r, revenue: r.revenue / 100 }))
+    .map(r => ({ ...r, revenue: r.revenue / 100, cancelledRevenue: r.cancelledRevenue / 100 }))
     .sort((a, b) => b.orders - a.orders);
-
   const timeseries = Object.values(tsMap)
     .map(r => ({ ...r, revenue: r.revenue / 100 }))
     .sort((a, b) => a.date < b.date ? -1 : 1);

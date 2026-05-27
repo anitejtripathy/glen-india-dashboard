@@ -153,25 +153,32 @@ function extractUTM(noteAttributes) {
 
 // ─── Order processing (mirrors worker.js logic) ──────────────────────────────────
 function processOrders(orders) {
+  const seen = new Set();
   const tableMap = {}, tsMap = {};
 
   for (const order of orders) {
+    if (order.id != null) {
+      if (seen.has(String(order.id))) continue;
+      seen.add(String(order.id));
+    }
     const tags = (order.tags || '').split(',').map(t => t.trim().toLowerCase());
     if (!tags.includes('magic')) continue;
 
     const { utm_source, utm_medium, utm_campaign } = extractUTM(order.note_attributes);
-    const revenueP  = Math.round(parseFloat(order.current_total_price || '0') * 100);
-    const cancelled = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
+    const revenueP          = Math.round(parseFloat(order.current_total_price || '0') * 100);
+    const cancelled         = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
+    const cancelledRevenueP = cancelled ? revenueP : 0;
     const date = order.created_at
       ? new Date(order.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
       : '';
     if (!date) continue;
 
     const tk = `${utm_source}|${utm_medium}|${utm_campaign}`;
-    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, channel: 'Magic' };
-    tableMap[tk].orders        += 1;
-    tableMap[tk].revenue       += revenueP;
-    tableMap[tk].cancellations += cancelled;
+    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
+    tableMap[tk].orders          += 1;
+    tableMap[tk].revenue         += revenueP;
+    tableMap[tk].cancellations   += cancelled;
+    tableMap[tk].cancelledRevenue += cancelledRevenueP;
 
     const sk = `${date}|${utm_source}`;
     if (!tsMap[sk]) tsMap[sk] = { date, utm_source, orders: 0, revenue: 0, cancellations: 0 };
@@ -181,7 +188,7 @@ function processOrders(orders) {
   }
 
   const rows = Object.values(tableMap)
-    .map(r => ({ ...r, revenue: r.revenue / 100 }))
+    .map(r => ({ ...r, revenue: r.revenue / 100, cancelledRevenue: r.cancelledRevenue / 100 }))
     .sort((a, b) => b.orders - a.orders);
 
   const timeseries = Object.values(tsMap)
