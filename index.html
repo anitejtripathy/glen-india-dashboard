@@ -273,6 +273,14 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
       <button class="ms-btn">Campaign ▾</button>
       <div class="ms-panel"></div>
     </div>
+    <div class="ms-wrap" id="ms-content">
+      <button class="ms-btn">Content ▾</button>
+      <div class="ms-panel"></div>
+    </div>
+    <div class="ms-wrap" id="ms-term">
+      <button class="ms-btn">Term ▾</button>
+      <div class="ms-panel"></div>
+    </div>
     <button id="filter-reset" class="filter-reset-btn" style="display:none">✕ Reset filters</button>
   </div>
 
@@ -297,7 +305,7 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
 
   <div class="section-header">
     <p class="section-label">UTM Breakdown</p>
-    <button id="download-btn" class="download-btn" style="display:none">↓ Download CSV</button>
+    <button id="download-btn" class="download-btn" style="display:none">↓ Download TSV</button>
   </div>
   <div id="table-skeleton"></div>
   <div id="table-outer" style="display:none">
@@ -308,6 +316,8 @@ header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; fle
           <th data-col="utm_source">Source</th>
           <th data-col="utm_medium">Medium</th>
           <th data-col="utm_campaign">Campaign</th>
+          <th data-col="utm_content">Content</th>
+          <th data-col="utm_term">Term</th>
           <th data-col="orders">Orders</th>
           <th data-col="revenue">Revenue</th>
           <th data-col="cancellations">Cancelled</th>
@@ -423,9 +433,8 @@ function srcKey(s) {
 function getIcon(s)       { return ICONS[srcKey(s)] || ICONS.default; }
 function getNamedColor(s) { return COLORS[srcKey(s)] || null; }
 function getChartColor(s) {
-  const named = getNamedColor(s);
-  if (named) return named;
-  return PALETTE[hashCode(srcKey(s)) % PALETTE.length];
+  const rawKey = (s || '').toLowerCase().trim() || 'default';
+  return PALETTE[hashCode(rawKey) % PALETTE.length];
 }
 function metricLabel(m) {
   return m === 'orders' ? 'Orders' : m === 'revenue' ? 'Revenue' : 'Cancellations';
@@ -468,6 +477,7 @@ class MultiSelect {
       document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
       if (!wasOpen) this._panel.classList.add('open');
     });
+    this._panel.addEventListener('click', e => e.stopPropagation());
   }
 
   setOptions(opts) {
@@ -555,22 +565,26 @@ document.addEventListener('click', () => {
 });
 
 // ─── Filter state ──────────────────────────────────────────────────────────────
-let msSource, msMedium, msCampaign, msChartSource;
+let msSource, msMedium, msCampaign, msContent, msTerm, msChartSource;
 
 function initFilters() {
   msSource      = new MultiSelect(document.getElementById('ms-source'),      'Source',      updateTableFilters);
   msMedium      = new MultiSelect(document.getElementById('ms-medium'),      'Medium',      updateTableFilters);
   msCampaign    = new MultiSelect(document.getElementById('ms-campaign'),    'Campaign',    updateTableFilters);
+  msContent     = new MultiSelect(document.getElementById('ms-content'),     'Content',     updateTableFilters);
+  msTerm        = new MultiSelect(document.getElementById('ms-term'),        'Term',        updateTableFilters);
   msChartSource = new MultiSelect(document.getElementById('ms-chart-source'),'All Sources', () => {
     if (lastData) renderChart(lastData.timeseries);
   });
 }
 
 function populateFilters(data) {
-  const uniq = arr => [...new Set(arr)].sort();
+  const uniq = arr => [...new Set(arr)].filter(v => v != null && v !== '').sort();
   msSource.setOptions(uniq(data.rows.map(r => r.utm_source)));
   msMedium.setOptions(uniq(data.rows.map(r => r.utm_medium)));
   msCampaign.setOptions(uniq(data.rows.map(r => r.utm_campaign)));
+  msContent.setOptions(uniq(data.rows.map(r => r.utm_content || '')));
+  msTerm.setOptions(uniq(data.rows.map(r => r.utm_term || '')));
   msChartSource.setOptions(uniq(data.timeseries.map(r => r.utm_source)));
   document.getElementById('filter-bar').style.display = 'flex';
 }
@@ -580,7 +594,9 @@ function getFilteredRows() {
   return lastData.rows.filter(r =>
     (msSource.isAll()   || msSource.getSelected().has(r.utm_source))   &&
     (msMedium.isAll()   || msMedium.getSelected().has(r.utm_medium))   &&
-    (msCampaign.isAll() || msCampaign.getSelected().has(r.utm_campaign))
+    (msCampaign.isAll() || msCampaign.getSelected().has(r.utm_campaign)) &&
+    (msContent.isAll()  || msContent.getSelected().has(r.utm_content || '')) &&
+    (msTerm.isAll()     || msTerm.getSelected().has(r.utm_term || ''))
   );
 }
 
@@ -589,7 +605,7 @@ function updateTableFilters() {
   const rows = getFilteredRows();
   renderSummary(rows);
   renderTable(rows);
-  const hasFilter = !msSource.isAll() || !msMedium.isAll() || !msCampaign.isAll();
+  const hasFilter = !msSource.isAll() || !msMedium.isAll() || !msCampaign.isAll() || !msContent.isAll() || !msTerm.isAll();
   document.getElementById('filter-reset').style.display = hasFilter ? 'inline-block' : 'none';
 }
 
@@ -648,6 +664,7 @@ function renderSummary(rows) {
 let sortCol = 'orders', sortDir = -1;
 const COL_LABELS = {
   utm_source: 'Source', utm_medium: 'Medium', utm_campaign: 'Campaign',
+  utm_content: 'Content', utm_term: 'Term',
   orders: 'Orders', revenue: 'Revenue', cancellations: 'Cancelled', cancelledRevenue: 'Canc. Rev',
 };
 
@@ -677,6 +694,8 @@ function renderTable(rows) {
       <td><div class="source-cell">${getIcon(r.utm_source)}<span>${esc(r.utm_source)}</span></div></td>
       <td class="dim">${esc(r.utm_medium)}</td>
       <td class="dim">${esc(r.utm_campaign)}</td>
+      <td class="dim">${esc(r.utm_content || '')}</td>
+      <td class="dim">${esc(r.utm_term || '')}</td>
       <td><strong>${r.orders.toLocaleString('en-IN')}</strong></td>
       <td class="rev">${formatINR(r.revenue)}</td>
       <td class="can${r.cancellations > 0 ? ' has' : ''}">${r.cancellations}</td>
@@ -688,7 +707,7 @@ function renderTable(rows) {
 
 // ─── Chart ────────────────────────────────────────────────────────────────────
 let chart = null;
-const activeMetrics = new Set(['orders']);
+let currentMetric = 'orders';
 const MAX_CHART_SERIES = 8;
 
 function renderChart(timeseries) {
@@ -698,14 +717,12 @@ function renderChart(timeseries) {
   const dates   = [...new Set(timeseries.map(r => r.date))].sort();
   const allSrcs = [...new Set(timeseries.map(r => r.utm_source))];
 
-  // Sync chart source dropdown options
   msChartSource.setOptions(allSrcs);
 
   const selectedSrcs = msChartSource.isAll()
     ? allSrcs
     : [...msChartSource.getSelected()].filter(s => allSrcs.includes(s));
 
-  // Top N + Other
   let mainSrcs = selectedSrcs, otherSrcs = [];
   if (selectedSrcs.length > MAX_CHART_SERIES) {
     const totals = {};
@@ -718,68 +735,32 @@ function renderChart(timeseries) {
     otherSrcs = ranked.slice(MAX_CHART_SERIES);
   }
 
-  const metrics = [...activeMetrics];
-  const hasRevenue = metrics.includes('revenue');
-  const multiMetric = metrics.length > 1;
-
+  const isRevenue = currentMetric === 'revenue';
   const datasets = [];
 
   mainSrcs.forEach(src => {
     const color = getChartColor(src);
-    metrics.forEach(metric => {
-      const isRevMetric = metric === 'revenue';
-      datasets.push({
-        label: multiMetric
-          ? `${src} (${metricLabel(metric)})`
-          : mainSrcs.length === 1 ? metricLabel(metric) : src,
-        data: dates.map(d => {
-          const e = timeseries.find(r => r.date === d && r.utm_source === src);
-          return e ? (e[metric] || 0) : 0;
-        }),
-        borderColor: color,
-        backgroundColor: color + '22',
-        tension: 0.3, pointRadius: 3, pointHoverRadius: 5,
-        yAxisID: (multiMetric && isRevMetric) ? 'y1' : 'y',
-        borderDash: (multiMetric && isRevMetric) ? [5, 3] : [],
-      });
+    datasets.push({
+      label: mainSrcs.length === 1 ? metricLabel(currentMetric) : src,
+      data: dates.map(d => {
+        const e = timeseries.find(r => r.date === d && r.utm_source === src);
+        return e ? (e[currentMetric] || 0) : 0;
+      }),
+      borderColor: color, backgroundColor: color + '22',
+      tension: 0.3, pointRadius: 3, pointHoverRadius: 5,
     });
   });
 
   if (otherSrcs.length) {
-    metrics.forEach(metric => {
-      const isRevMetric = metric === 'revenue';
-      datasets.push({
-        label: `Other (${otherSrcs.length})${multiMetric ? ' ' + metricLabel(metric) : ''}`,
-        data: dates.map(d => otherSrcs.reduce((sum, src) => {
-          const e = timeseries.find(r => r.date === d && r.utm_source === src);
-          return sum + (e ? (e[metric] || 0) : 0);
-        }, 0)),
-        borderColor: '#6B7280', backgroundColor: '#6B728022',
-        tension: 0.3, pointRadius: 2, borderDash: [4, 2],
-        yAxisID: (multiMetric && isRevMetric) ? 'y1' : 'y',
-      });
+    datasets.push({
+      label: `Other (${otherSrcs.length})`,
+      data: dates.map(d => otherSrcs.reduce((sum, src) => {
+        const e = timeseries.find(r => r.date === d && r.utm_source === src);
+        return sum + (e ? (e[currentMetric] || 0) : 0);
+      }, 0)),
+      borderColor: '#6B7280', backgroundColor: '#6B728022',
+      tension: 0.3, pointRadius: 2, borderDash: [4, 2],
     });
-  }
-
-  const isSoloRevenue = metrics.length === 1 && metrics[0] === 'revenue';
-  const scales = {
-    x: {
-      grid: { color: '#1C1F2E' },
-      ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, maxRotation: 45 },
-    },
-    y: {
-      grid: { color: '#1C1F2E' },
-      ticks: {
-        color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 },
-        callback: v => isSoloRevenue ? formatINR(v) : v,
-      },
-    },
-  };
-  if (multiMetric && hasRevenue) {
-    scales.y1 = {
-      position: 'right', grid: { drawOnChartArea: false },
-      ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, callback: v => formatINR(v) },
-    };
   }
 
   if (chart) chart.destroy();
@@ -805,13 +786,24 @@ function renderChart(timeseries) {
           callbacks: {
             label: ctx => {
               const v = ctx.parsed.y;
-              const isRev = ctx.dataset.yAxisID === 'y1' || isSoloRevenue;
-              return ` ${ctx.dataset.label}: ${isRev ? formatINR(v) : v}`;
+              return ` ${ctx.dataset.label}: ${isRevenue ? formatINR(v) : v}`;
             },
           },
         },
       },
-      scales,
+      scales: {
+        x: {
+          grid: { color: '#1C1F2E' },
+          ticks: { color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 }, maxRotation: 45 },
+        },
+        y: {
+          grid: { color: '#1C1F2E' },
+          ticks: {
+            color: '#6B7280', font: { family: 'IBM Plex Mono', size: 11 },
+            callback: v => isRevenue ? formatINR(v) : v,
+          },
+        },
+      },
     },
   });
 }
@@ -908,32 +900,79 @@ async function loadRange(from, to) {
   }
 }
 
-// ─── CSV download ──────────────────────────────────────────────────────────────
-function downloadCSV() {
-  if (!lastData?.rows.length) return;
-  const rows = getFilteredRows();
-  if (!rows.length) { showWarning('No rows match current filters.'); return; }
-  if (rows.length > 1000) {
-    showWarning(`Large export (${rows.length} rows) — preparing download…`);
-    setTimeout(() => { doDownload(rows); clearStatus(); }, 100);
-  } else {
-    doDownload(rows);
+// ─── TSV download ──────────────────────────────────────────────────────────────
+function referringPlatform(source) {
+  const s = (source || '').toLowerCase();
+  if (/google|adwords|gads|pmax|googleppc/.test(s)) return 'Alphabet';
+  if (/facebook|fb|meta/.test(s)) return 'Meta';
+  if (/instagram|ig/.test(s)) return 'Meta';
+  if (/youtube/.test(s)) return 'Alphabet';
+  if (/whatsapp/.test(s)) return 'Meta';
+  return source || '(direct)';
+}
+
+function referringChannel(medium) {
+  const m = (medium || '').toLowerCase();
+  if (/cpc|ppc|paid/.test(m)) return 'Paid';
+  if (/social/.test(m)) return 'Social';
+  if (/email/.test(m)) return 'Email';
+  if (/organic/.test(m)) return 'Organic Search';
+  if (/affiliate/.test(m)) return 'Affiliates';
+  if (/referral/.test(m)) return 'Referral';
+  if (m === '(none)' || m === '') return 'Direct';
+  return medium || '(none)';
+}
+
+async function downloadTSV() {
+  if (!currentFrom || !currentTo) return;
+  const btn = document.getElementById('download-btn');
+  btn.textContent = '⟳ Fetching…';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`${CONFIG.WORKER_URL}?from=${currentFrom}&to=${currentTo}&format=lineitem`);
+    if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+    const rows = await resp.json();
+    if (rows.error) throw new Error(rows.error);
+    if (!Array.isArray(rows) || !rows.length) {
+      showWarning('No line-item data found for this date range.'); return;
+    }
+    doDownloadTSV(rows);
+  } catch (err) {
+    showWarning(`Download failed: ${err.message}`);
+  } finally {
+    btn.textContent = '↓ Download TSV';
+    btn.disabled = false;
   }
 }
 
-function doDownload(rows) {
-  const header = 'Source,Medium,Campaign,Orders,Revenue,Cancellations,CancelledRevenue,Channel';
-  const lines = rows.map(r =>
-    [r.utm_source, r.utm_medium, r.utm_campaign, r.orders, r.revenue.toFixed(2),
-     r.cancellations, (r.cancelledRevenue || 0).toFixed(2), r.channel]
-      .map(v => `"${String(v).replace(/"/g,'""')}"`)
-      .join(',')
-  );
-  const csv = [header, ...lines].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+function doDownloadTSV(rows) {
+  const headers = [
+    'Order UTM source','Order UTM medium','Order UTM campaign',
+    'Order UTM content','Order UTM term',
+    'Product type','Product title',
+    'Referring channel','Referring platform',
+    'Month',
+    'Orders (last click)','Gross sales (last click)','Discounts (last click)',
+    'Returns (last click)','Net sales (last click)','Shipping charges (last click)',
+    'Duties (last click)','Additional fees (last click)','Taxes (last click)',
+    'Total sales (last click)','Net items sold (last click)',
+  ];
+  const lines = rows.map(r => [
+    r.utm_source, r.utm_medium, r.utm_campaign,
+    r.utm_content || '', r.utm_term || '',
+    r.product_type || '', r.product_title || '',
+    referringChannel(r.utm_medium), referringPlatform(r.utm_source),
+    r.month,
+    r.orders, r.gross_sales, r.discounts,
+    r.returns, r.net_sales, r.shipping,
+    r.duties, r.additional_fees, r.taxes,
+    r.total_sales, r.net_items,
+  ].join('\t'));
+  const tsv = [headers.join('\t'), ...lines].join('\n');
+  const blob = new Blob([tsv], { type: 'text/tab-separated-values' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `glen-india-utm-${currentFrom || 'export'}_${currentTo || ''}.csv`;
+  a.download = `glen-india-utm-${currentFrom}_${currentTo}.tsv`;
   a.click(); URL.revokeObjectURL(a.href);
 }
 
@@ -968,15 +1007,10 @@ document.getElementById('apply-btn').addEventListener('click', () => {
 
 document.querySelectorAll('.metric-chip').forEach(btn => {
   btn.addEventListener('click', () => {
-    const m = btn.dataset.metric;
-    if (activeMetrics.has(m)) {
-      if (activeMetrics.size === 1) return; // keep at least one
-      activeMetrics.delete(m);
-      btn.classList.remove('active');
-    } else {
-      activeMetrics.add(m);
-      btn.classList.add('active');
-    }
+    if (btn.dataset.metric === currentMetric) return;
+    document.querySelectorAll('.metric-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMetric = btn.dataset.metric;
     if (lastData) renderChart(lastData.timeseries);
   });
 });
@@ -990,12 +1024,12 @@ document.querySelectorAll('#utm-table thead th[data-col]').forEach(th => {
 });
 
 document.getElementById('filter-reset').addEventListener('click', () => {
-  msSource.reset(); msMedium.reset(); msCampaign.reset();
+  msSource.reset(); msMedium.reset(); msCampaign.reset(); msContent.reset(); msTerm.reset();
   document.getElementById('filter-reset').style.display = 'none';
   if (lastData) { renderSummary(getFilteredRows()); renderTable(getFilteredRows()); }
 });
 
-document.getElementById('download-btn').addEventListener('click', downloadCSV);
+document.getElementById('download-btn').addEventListener('click', downloadTSV);
 
 // ─── Init ──────────────────────────────────────────────────────────────────────
 initFilters();

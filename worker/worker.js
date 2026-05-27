@@ -20,6 +20,21 @@ export default {
     if (from < '2026-04-01')
       return jsonResp({ error: 'Data is only available from 2026-04-01' }, 400, origin);
 
+    if (url.searchParams.get('format') === 'lineitem') {
+      const allOrders = [];
+      for (const chunk of monthChunks(from, to)) {
+        let orders;
+        try {
+          orders = await fetchAllOrders(chunk.from, chunk.to, env.SHOPIFY_ADMIN_TOKEN,
+            'id,tags,note_attributes,created_at,line_items,total_tax');
+        } catch (err) {
+          return jsonResp({ error: err.message }, 502, origin);
+        }
+        allOrders.push(...orders);
+      }
+      return jsonResp(processLineItems(allOrders), 200, origin);
+    }
+
     const curMonthStart = firstOfMonth(todayStr());
     const chunks = monthChunks(from, to);
     const chunkResults = [];
@@ -130,11 +145,11 @@ function mergeChunkResults(results) {
     if (!fetchedAt || result.fetchedAt > fetchedAt) fetchedAt = result.fetchedAt;
 
     for (const row of (result.rows || [])) {
-      const tk = `${row.utm_source}|${row.utm_medium}|${row.utm_campaign}`;
+      const tk = `${row.utm_source}|${row.utm_medium}|${row.utm_campaign}|${row.utm_content||''}|${row.utm_term||''}`;
       if (!tableMap[tk]) {
         tableMap[tk] = { utm_source: row.utm_source, utm_medium: row.utm_medium,
-          utm_campaign: row.utm_campaign, orders: 0, revenue: 0,
-          cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
+          utm_campaign: row.utm_campaign, utm_content: row.utm_content||'', utm_term: row.utm_term||'',
+          orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
       }
       tableMap[tk].orders          += row.orders;
       tableMap[tk].revenue         += row.revenue;
@@ -161,8 +176,8 @@ function mergeChunkResults(results) {
 
 // ─── Shopify pagination ────────────────────────────────────────────────────────
 
-async function fetchAllOrders(from, to, token) {
-  const fields  = 'id,tags,note_attributes,current_total_price,cancelled_at,cancel_reason,created_at';
+async function fetchAllOrders(from, to, token, fields) {
+  if (!fields) fields = 'id,tags,note_attributes,current_total_price,cancelled_at,cancel_reason,created_at';
   const baseUrl = 'https://glen-india.myshopify.com/admin/api/2024-10/orders.json';
   let nextUrl   = `${baseUrl}?tag=Magic`
     + `&created_at_min=${from}T00:00:00%2B05:30`
@@ -208,26 +223,87 @@ function extractUTM(noteAttributes) {
       .map(({ name, value }) => [name, value])
   );
   let source = a['utm_source'], medium = a['utm_medium'], campaign = a['utm_campaign'];
+  let content = a['utm_content'], term = a['utm_term'];
 
   if ((!source || !medium || !campaign) && a['codk_campaign_attribution']) {
     try {
       const codk = JSON.parse(a['codk_campaign_attribution']);
-      source = source || codk.utm_source; medium = medium || codk.utm_medium; campaign = campaign || codk.utm_campaign;
+      source   = source   || codk.utm_source;
+      medium   = medium   || codk.utm_medium;
+      campaign = campaign || codk.utm_campaign;
+      content  = content  || codk.utm_content;
+      term     = term     || codk.utm_term;
     } catch (_) {}
   }
   if ((!source || !medium || !campaign) && a['_eventSourceUrl']) {
     try {
       const u = new URL(a['_eventSourceUrl']);
-      source = source || u.searchParams.get('utm_source');
-      medium = medium || u.searchParams.get('utm_medium');
+      source   = source   || u.searchParams.get('utm_source');
+      medium   = medium   || u.searchParams.get('utm_medium');
       campaign = campaign || u.searchParams.get('utm_campaign');
+      content  = content  || u.searchParams.get('utm_content');
+      term     = term     || u.searchParams.get('utm_term');
     } catch (_) {}
   }
   return {
     utm_source:   (source?.trim()   || '(direct)').toLowerCase(),
     utm_medium:   (medium?.trim()   || '(none)').toLowerCase(),
     utm_campaign: (campaign?.trim() || '(not set)').toLowerCase(),
+    utm_content:  (content?.trim()  || '').toLowerCase(),
+    utm_term:     (term?.trim()     || '').toLowerCase(),
   };
+}
+
+// ─── Line-item processing (for TSV download) ───────────────────────────────────
+
+function round2(n) { return Math.round(n * 100) / 100; }
+
+function processLineItems(orders) {
+  const seen = new Set();
+  const rowMap = {};
+  for (const order of orders) {
+    if (order.id != null) {
+      if (seen.has(String(order.id))) continue;
+      seen.add(String(order.id));
+    }
+    const tags = (order.tags || '').split(',').map(t => t.trim().toLowerCase());
+    if (!tags.includes('magic')) continue;
+    const { utm_source, utm_medium, utm_campaign, utm_content, utm_term } = extractUTM(order.note_attributes);
+    const month = order.created_at
+      ? new Date(order.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }).slice(0, 7)
+      : '';
+    if (!month) continue;
+    const lineItems = order.line_items || [];
+    const numItems  = Math.max(lineItems.length, 1);
+    const totalTaxP = Math.round(parseFloat(order.total_tax || '0') * 100);
+    for (const item of lineItems) {
+      const productType  = item.product_type || '';
+      const productTitle = item.title || '';
+      const qty   = item.quantity || 1;
+      const grossP = Math.round(parseFloat(item.price || '0') * qty * 100);
+      const discP  = Math.round(parseFloat(item.total_discount || '0') * 100);
+      const taxP   = Math.round(totalTaxP / numItems);
+      const rk = `${utm_source}|${utm_medium}|${utm_campaign}|${utm_content}|${utm_term}|${productType}|${productTitle}|${month}`;
+      if (!rowMap[rk]) {
+        rowMap[rk] = { utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+          product_type: productType, product_title: productTitle, month,
+          _ids: new Set(), grossP: 0, discP: 0, taxP: 0, netItems: 0 };
+      }
+      rowMap[rk]._ids.add(String(order.id));
+      rowMap[rk].grossP   += grossP;
+      rowMap[rk].discP    += discP;
+      rowMap[rk].taxP     += taxP;
+      rowMap[rk].netItems += qty;
+    }
+  }
+  return Object.values(rowMap).map(({ _ids, grossP, discP, taxP, netItems, ...r }) => {
+    const gross = grossP / 100, disc = discP / 100, tax = taxP / 100;
+    const net   = gross - disc;
+    return { ...r, orders: _ids.size,
+      gross_sales: round2(gross), discounts: round2(disc), returns: 0,
+      net_sales: round2(net), shipping: 0, duties: 0, additional_fees: 0,
+      taxes: round2(tax), total_sales: round2(net + tax), net_items: netItems };
+  });
 }
 
 // ─── Order processing ──────────────────────────────────────────────────────────
@@ -246,7 +322,7 @@ function processOrders(orders) {
     const tags = (order.tags || '').split(',').map(t => t.trim().toLowerCase());
     if (!tags.includes('magic')) continue;
 
-    const { utm_source, utm_medium, utm_campaign } = extractUTM(order.note_attributes);
+    const { utm_source, utm_medium, utm_campaign, utm_content, utm_term } = extractUTM(order.note_attributes);
     const revenueP         = Math.round(parseFloat(order.current_total_price || '0') * 100);
     const cancelled        = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
     const cancelledRevenueP = cancelled ? revenueP : 0;
@@ -255,8 +331,8 @@ function processOrders(orders) {
       : '';
     if (!date) continue;
 
-    const tk = `${utm_source}|${utm_medium}|${utm_campaign}`;
-    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
+    const tk = `${utm_source}|${utm_medium}|${utm_campaign}|${utm_content}|${utm_term}`;
+    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, utm_content, utm_term, orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
     tableMap[tk].orders          += 1;
     tableMap[tk].revenue         += revenueP;
     tableMap[tk].cancellations   += cancelled;

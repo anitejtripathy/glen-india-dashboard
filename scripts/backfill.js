@@ -125,22 +125,27 @@ function extractUTM(noteAttributes) {
   );
 
   let source = a['utm_source'], medium = a['utm_medium'], campaign = a['utm_campaign'];
+  let content = a['utm_content'], term = a['utm_term'];
 
   if ((!source || !medium || !campaign) && a['codk_campaign_attribution']) {
     try {
       const codk = JSON.parse(a['codk_campaign_attribution']);
-      source = source || codk.utm_source;
-      medium = medium || codk.utm_medium;
+      source   = source   || codk.utm_source;
+      medium   = medium   || codk.utm_medium;
       campaign = campaign || codk.utm_campaign;
+      content  = content  || codk.utm_content;
+      term     = term     || codk.utm_term;
     } catch (_) {}
   }
 
   if ((!source || !medium || !campaign) && a['_eventSourceUrl']) {
     try {
       const u = new URL(a['_eventSourceUrl']);
-      source = source || u.searchParams.get('utm_source');
-      medium = medium || u.searchParams.get('utm_medium');
+      source   = source   || u.searchParams.get('utm_source');
+      medium   = medium   || u.searchParams.get('utm_medium');
       campaign = campaign || u.searchParams.get('utm_campaign');
+      content  = content  || u.searchParams.get('utm_content');
+      term     = term     || u.searchParams.get('utm_term');
     } catch (_) {}
   }
 
@@ -148,6 +153,8 @@ function extractUTM(noteAttributes) {
     utm_source:   (source?.trim()   || '(direct)').toLowerCase(),
     utm_medium:   (medium?.trim()   || '(none)').toLowerCase(),
     utm_campaign: (campaign?.trim() || '(not set)').toLowerCase(),
+    utm_content:  (content?.trim()  || '').toLowerCase(),
+    utm_term:     (term?.trim()     || '').toLowerCase(),
   };
 }
 
@@ -164,7 +171,7 @@ function processOrders(orders) {
     const tags = (order.tags || '').split(',').map(t => t.trim().toLowerCase());
     if (!tags.includes('magic')) continue;
 
-    const { utm_source, utm_medium, utm_campaign } = extractUTM(order.note_attributes);
+    const { utm_source, utm_medium, utm_campaign, utm_content, utm_term } = extractUTM(order.note_attributes);
     const revenueP          = Math.round(parseFloat(order.current_total_price || '0') * 100);
     const cancelled         = (order.cancelled_at != null || order.cancel_reason != null) ? 1 : 0;
     const cancelledRevenueP = cancelled ? revenueP : 0;
@@ -173,8 +180,8 @@ function processOrders(orders) {
       : '';
     if (!date) continue;
 
-    const tk = `${utm_source}|${utm_medium}|${utm_campaign}`;
-    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
+    const tk = `${utm_source}|${utm_medium}|${utm_campaign}|${utm_content}|${utm_term}`;
+    if (!tableMap[tk]) tableMap[tk] = { utm_source, utm_medium, utm_campaign, utm_content, utm_term, orders: 0, revenue: 0, cancellations: 0, cancelledRevenue: 0, channel: 'Magic' };
     tableMap[tk].orders          += 1;
     tableMap[tk].revenue         += revenueP;
     tableMap[tk].cancellations   += cancelled;
