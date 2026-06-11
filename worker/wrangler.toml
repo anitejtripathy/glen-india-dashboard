@@ -1,6 +1,7 @@
 name = "glen-india-utm"
 main = "worker.js"
 compatibility_date = "2024-10-01"
+account_id = "eb5315c8d4f6f1644710ad70cf19500a"
 
 # KV namespace for caching Shopify API responses.
 # After running: npx wrangler kv:namespace create GLEN_INDIA_CACHE
