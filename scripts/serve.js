@@ -82,18 +82,33 @@ async function fetchAllOrders(from, to, token, fields) {
   return all;
 }
 
+function isNumericId(s) { return s && /^\d+$/.test(s.trim()); }
+
 function extractUTM(noteAttributes) {
   const a = Object.fromEntries(
     (noteAttributes || []).filter(x => x?.name != null).map(({ name, value }) => [name, value])
   );
   let source = a['utm_source'], medium = a['utm_medium'], campaign = a['utm_campaign'];
   let content = a['utm_content'], term = a['utm_term'];
-  if ((!source || !medium || !campaign) && a['codk_campaign_attribution']) {
-    try {
-      const c = JSON.parse(a['codk_campaign_attribution']);
-      source=source||c.utm_source; medium=medium||c.utm_medium; campaign=campaign||c.utm_campaign;
-      content=content||c.utm_content; term=term||c.utm_term;
-    } catch(_) {}
+
+  let codk = null;
+  if (a['codk_campaign_attribution']) {
+    try { codk = JSON.parse(a['codk_campaign_attribution']); } catch(_) {}
+  }
+
+  // When utm_campaign is a bare numeric ID (Google/Meta campaign ID), prefer the
+  // full codk tuple which captures the readable campaign name from the ad click.
+  if (codk && isNumericId(campaign) && codk.utm_campaign && !isNumericId(codk.utm_campaign)) {
+    source   = codk.utm_source   || source;
+    medium   = codk.utm_medium   || medium;
+    campaign = codk.utm_campaign;
+    content  = content  || codk.utm_content;
+    term     = term     || codk.utm_term;
+  }
+
+  if (codk && (!source || !medium || !campaign)) {
+    source=source||codk.utm_source; medium=medium||codk.utm_medium; campaign=campaign||codk.utm_campaign;
+    content=content||codk.utm_content; term=term||codk.utm_term;
   }
   if ((!source || !medium || !campaign) && a['_eventSourceUrl']) {
     try {

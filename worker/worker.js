@@ -216,6 +216,8 @@ function parseNextLink(header) {
 
 // ─── UTM extraction ────────────────────────────────────────────────────────────
 
+function isNumericId(s) { return s && /^\d+$/.test(s.trim()); }
+
 function extractUTM(noteAttributes) {
   const a = Object.fromEntries(
     (noteAttributes || [])
@@ -225,16 +227,33 @@ function extractUTM(noteAttributes) {
   let source = a['utm_source'], medium = a['utm_medium'], campaign = a['utm_campaign'];
   let content = a['utm_content'], term = a['utm_term'];
 
-  if ((!source || !medium || !campaign) && a['codk_campaign_attribution']) {
-    try {
-      const codk = JSON.parse(a['codk_campaign_attribution']);
-      source   = source   || codk.utm_source;
-      medium   = medium   || codk.utm_medium;
-      campaign = campaign || codk.utm_campaign;
-      content  = content  || codk.utm_content;
-      term     = term     || codk.utm_term;
-    } catch (_) {}
+  // Parse codk once — it captures the readable campaign name set at ad click time
+  let codk = null;
+  if (a['codk_campaign_attribution']) {
+    try { codk = JSON.parse(a['codk_campaign_attribution']); } catch (_) {}
   }
+
+  // When utm_campaign is a bare numeric ID (Google/Meta campaign ID like "21997516765"),
+  // the direct param is not human-readable. Prefer the full codk tuple which has the
+  // readable campaign name (e.g. "DR_Old_Search_Brand_MaxConvValue_AllProducts_24April2023").
+  if (codk && isNumericId(campaign) && codk.utm_campaign && !isNumericId(codk.utm_campaign)) {
+    source   = codk.utm_source   || source;
+    medium   = codk.utm_medium   || medium;
+    campaign = codk.utm_campaign;
+    content  = content  || codk.utm_content;
+    term     = term     || codk.utm_term;
+  }
+
+  // Standard fallback: fill in any missing fields from codk
+  if (codk && (!source || !medium || !campaign)) {
+    source   = source   || codk.utm_source;
+    medium   = medium   || codk.utm_medium;
+    campaign = campaign || codk.utm_campaign;
+    content  = content  || codk.utm_content;
+    term     = term     || codk.utm_term;
+  }
+
+  // Last resort: _eventSourceUrl query params
   if ((!source || !medium || !campaign) && a['_eventSourceUrl']) {
     try {
       const u = new URL(a['_eventSourceUrl']);
@@ -245,6 +264,7 @@ function extractUTM(noteAttributes) {
       term     = term     || u.searchParams.get('utm_term');
     } catch (_) {}
   }
+
   return {
     utm_source:   (source?.trim()   || '(direct)').toLowerCase(),
     utm_medium:   (medium?.trim()   || '(none)').toLowerCase(),

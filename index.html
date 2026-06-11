@@ -441,7 +441,7 @@ function metricLabel(m) {
 }
 
 // ─── localStorage cache ────────────────────────────────────────────────────────
-const CACHE_VERSION = 'v4'; // bump when API response schema changes
+const CACHE_VERSION = 'v5'; // bump when API response schema changes
 const CACHE_TTL = 24 * 3600 * 1000;
 const cacheKey = (from, to) => `glen-india:${CACHE_VERSION}:${from}:${to}`;
 
